@@ -4,6 +4,18 @@
 
 ## 0. Contact Information
 
+
+
+
+
+
+
+
+
+
+Nia Bartolucci
+email: barto22n@bu.edu
+=======
 Nia Bartolucci
 barto22n@bu.edu
 
@@ -13,11 +25,17 @@ Email: cjreimer@bu.edu
 Kangjoon Cho
 Email: kangjoon@bu.edu
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> c5ac8139c081f0ce71296e95134a88cc40d8fc9b
 Zhenpeng Zuo
 Email: zpzuo@bu.edu
 
 
 
+<<<<<<< HEAD
 ## 1. Pulling and visualizing data
 
 For any current date, the R script named **"XXX.R"** is used to pull NEON measurements (NEE, LE, and soil moisture) and NOAA weather forecasts (NOAA’s Global Ensemble Forecasting System, GEFS) across the four NEON sites, and to plot time series for the NEON history and the NOAA projections. 
@@ -32,3 +50,5 @@ Of the data being pulled, the NEON measurements are updated monthly, with each u
 
 The pulled data and the sub-directories created for storing the data are automatically deleted before the program exits. Only the output graphs are retained. 
 
+=======
+>>>>>>> c5ac8139c081f0ce71296e95134a88cc40d8fc9b
