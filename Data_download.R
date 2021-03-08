@@ -134,7 +134,7 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 
 for (i in 1:4){
   for (j in 1:4){
-    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <-"C:/Users/zhenp/testDirectory/drivers")  
+    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- paste0(basePath,"drivers/"))
   }
 }
 
