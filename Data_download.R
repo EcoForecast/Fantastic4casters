@@ -3,9 +3,8 @@
 # setting the terrestral data script to run at 5:00 AM daily
 
 
-basePath <- ""
+basePath <- "C:/Users/zhenp/Documents/test/"
 
-basePath <- "~/Ecological_Forecast/Fantastic4casters/"
 
 graphPath <- paste0(basePath,"graph/")
 dataPath <- paste0(basePath,"data/")
@@ -51,11 +50,7 @@ dev.off()
 
 # definition for directory, sites, date and cycles
 
-
 base_dir <- paste0(basePath,"drivers/noaa/NOAAGEFS_1hr")
-
-base_dir <- paste0(basePath,"drivers/noaa/NOAAGEFS_1hr/")
-
 site_names <- c("BART","KONZ","OSBS","SRER")
 cycle_names <- c("00","06","12","18")
 
@@ -142,11 +137,7 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 
 for (i in 1:4){
   for (j in 1:4){
-
     download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- paste0(basePath,"drivers/"))
-
-    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- paste0(basePath,"drivers/"))  
-
   }
 }
 
