@@ -3,8 +3,8 @@
 # setting the terrestral data script to run at 5:00 AM daily
 
 basePath <- "~/Ecological_Forecast/Fantastic4casters/"
-graphPath <- "~/Ecological_Forecast/Fantastic4casters/graph/"
-dataPath <- "~/Ecological_Forecast/Fantastic4casters/data/"
+graphPath <- paste0(basePath,"graph/")
+dataPath <- paste0(basePath,"data/")
 
 # Download target 30 min data
 
@@ -43,6 +43,15 @@ pdf(file = newFilename)
 plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
 dev.off()
+
+
+# definition for directory, sites, date and cycles
+
+base_dir <- paste0(basePath,"drivers/noaa/NOAAGEFS_1hr")
+site_names <- c("BART","KONZ","OSBS","SRER")
+cycle_names <- c("00","06","12","18")
+
+theDate <- Sys.Date()-1
 
 ## function for download NOAA meteorological prediction data
 
@@ -120,19 +129,12 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
   return(combined_met)
 }
 
-# definition for directory, sites, date and cycles
-
-base_dir <- "~/Ecological_Forecast/Fantastic4casters/drivers/noaa/NOAAGEFS_1hr"
-site_names <- c("BART","KONZ","OSBS","SRER")
-cycle_names <- c("00","06","12","18")
-
-theDate <- Sys.Date()-1
 
 # Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
 
 for (i in 1:4){
   for (j in 1:4){
-    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- "~/Ecological_Forecast/Fantastic4casters/drivers")  
+    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- paste0(basePath,"drivers/"))  
   }
 }
 
