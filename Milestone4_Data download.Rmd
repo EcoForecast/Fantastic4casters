@@ -7,9 +7,9 @@ output: html_document
 
 ```{r}
 # This chunk is from "TimeSeries.R"
-NEON_terrestrial<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
-
-Target_30min<-NEON_terrestrial[,c(1:4)]
+Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
+Target_30min = Target_30min[1,]
+save(Target_30min, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_30min.Rdata")
 
 pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_30min.pdf")
 plot(Target_30min$time,Target_30min$nee, type="l", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
@@ -17,6 +17,7 @@ plot(Target_30min$time,Target_30min$le, type="l", xlab = "Time", ylab = "Latent 
 dev.off()
 
 Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
+save(Target_daily, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_daily.Rdata")
 
 pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_daily.pdf")
 plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
@@ -158,14 +159,3 @@ for (i in 1:4){
 dev.off()
 ```
 
-```{r}
-
-for(i in 1:4){
-  foo0_subset_by_site = subset(foo, ensemble == 0 & siteID == sites[i])
-}
-plot(foo0_subset_by_site$time, foo0_subset_by_site[1]$air_temperature, type = 'l')
-for( i in 2:4){
-  lines(foo0_subset_by_site$time, foo0_subset_by_site[i]$air_temperature, col = i)
-}
-
-```
