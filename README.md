@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# Fantastic4casters
-2021 BU EE585 team project: EFI/NEON terrestrial carbon challenge 
-
 
 =======
 # Fantastic4casters 
@@ -25,7 +21,6 @@ Email: zpzuo@bu.edu
 
 
 
-<<<<<<< HEAD
 =======
 ## 1. Pulling and visualizing data
 
