@@ -1,37 +1,51 @@
----
-title: "Milestone4_Data_download"
-author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
-date: "3/7/2021"
-output: html_document
----
+## Update data daily using cron
+# This code is based on "Milestone4_Data_download.Rmd" 
+# setting the terrestral data script to run at 5:00 AM daily
 
-```{r}
-# This chunk is from "TimeSeries.R"
+basePath <- "~/Ecological_Forecast/Fantastic4casters/"
+graphPath <- "~/Ecological_Forecast/Fantastic4casters/graph/"
+dataPath <- "~/Ecological_Forecast/Fantastic4casters/data/"
+
+# Download target 30 min data
+
 Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
-Target_30min = Target_30min[1,]
-save(Target_30min, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_30min.Rdata")
 
-pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_30min.pdf")
+# Save the updated target data as Rdata file
+
+newFilename <- sprintf("%s.Rdata","Target_30min")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(Target_30min, file = newFilename)
+
+# Plot 30min target data and export plot as pdf
+
+newFilename <- sprintf("%s%s.pdf","Plot_Target_30min_",Sys.Date())
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+pdf(file = newFilename)
 plot(Target_30min$time,Target_30min$nee, type="l", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_30min$time,Target_30min$le, type="l", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
 dev.off()
 
-Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
-save(Target_daily, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_daily.Rdata")
+# Download daily target data
 
-pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_daily.pdf")
+Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
+
+# Save the updated target data as Rdata file
+
+newFilename <- sprintf("%s.Rdata","Target_daily")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(Target_daily, file = newFilename)
+
+# Plot daily target data and export plot as pdf
+
+newFilename <- sprintf("%s%s.pdf","Plot_Target_Daily_",Sys.Date())
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+pdf(file = newFilename)
 plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
 dev.off()
 
-summary(Target_30min)
-summary(Target_daily)
+## function for download NOAA meteorological prediction data
 
-```
-
-```{r}
-# This chunk is from "TimeSeries.R"
-#Meteorological Data (setting function)
 download_noaa_files_s3 <- function(siteID, date, cycle, local_directory){
   
   Sys.setenv("AWS_DEFAULT_REGION" = "data",
@@ -44,35 +58,7 @@ download_noaa_files_s3 <- function(siteID, date, cycle, local_directory){
   }
 }
 
-```
-
-```{r}
-# This chunk is from "TimeSeries.R"
-#download all NOAA Global Ensemble Forecasting System (GEFS) data history (from Sep 25th, 2020 to Mar 5th, 2021)
-
-site_names <- c("BART","KONZ","OSBS","SRER")
-cycle_names <- c("00","06","12","18")
-
-start <- as.Date("2020-09-25")
-end <- as.Date("2021-03-05")
-
-theDate <- start
-
-while (theDate <= end)
-{
-  for (i in 1:4){
-    for (j in 1:4){
-      download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- "~/Ecological_Forecast/Fantastic4casters/drivers")  
-    }}
-  
-  theDate <- theDate + 1
-}
-
-```
-
-```{r}
-
-# Setting function for converting the netcdf files to csv files
+### Setting function for converting the netcdf files to csv files
 
 library(tidyverse)
 
@@ -104,7 +90,7 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
     nfiles <-   length(forecast_files)
     
     for(j in 1:nfiles){
-    
+      
       ens <- dplyr::last(unlist(stringr::str_split(basename(forecast_files[j]),"_")))
       ens <- stringr::str_sub(ens,1,5)
       noaa_met_nc <- ncdf4::nc_open(forecast_files[j])
@@ -126,7 +112,7 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
         dplyr::mutate(siteID = sites[i],
                       ensemble = as.numeric(stringr::str_sub(ens,4,5))) %>% 
         dplyr::select("siteID","ensemble","time",all_of(cf_met_vars))
-
+      
       combined_met <- rbind(combined_met, noaa_met)
       
     }
@@ -134,28 +120,37 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
   return(combined_met)
 }
 
-```
+# definition for directory, sites, date and cycles
 
-```{r}
-# example code (conversion for March 1st cycle "00" data)
 base_dir <- "~/Ecological_Forecast/Fantastic4casters/drivers/noaa/NOAAGEFS_1hr"
-date <- "2021-03-06"
-cycle <- "00"
-sites <- c("BART","KONZ","OSBS","SRER")
-foo = noaa_gefs_read(base_dir, date, cycle, sites)
-```
+site_names <- c("BART","KONZ","OSBS","SRER")
+cycle_names <- c("00","06","12","18")
 
-```{r}
-pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/GEFS.pdf")
+theDate <- Sys.Date()-1
+
+# Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
+
 for (i in 1:4){
-  foo0 = subset(foo, ensemble==0 & siteID==sites[i])
-  plot(foo0$time, foo0$air_temperature, type='l', main = "air temperature prediction")
-  plot(foo0$time, foo0$surface_downwelling_shortwave_flux_in_air, type='l', main = "shortwave flux prediction")
-  plot(foo0$time, foo0$surface_downwelling_longwave_flux_in_air, type='l', main = "longwave flux prediction")
-  plot(foo0$time, foo0$relative_humidity, type='l', main = "relative_humidity prediction")
-  plot(foo0$time, foo0$wind_speed, type='l', main = "wind speed prediction")
-  plot(foo0$time, foo0$precipitation_flux, type='l', main = "precipitation flux prediction")
+  for (j in 1:4){
+    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- "~/Ecological_Forecast/Fantastic4casters/drivers")  
+  }
 }
-dev.off()
-```
 
+# data conversion from cdf to csv, and plot data for ensemble 0 case as an example
+for (j in 1:4){
+  foo = noaa_gefs_read(base_dir, theDate, cycle_names[j], site_names)
+  
+  newFilename <- sprintf("%s%s%s%s.pdf","Plot_GEFS_30min_cycle",cycle_names[j],"_",Sys.Date()-1)
+  newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+  pdf(file = newFilename)
+  for (i in 1:4){
+    foo0 = subset(foo, ensemble==0 & siteID==site_names[i])
+    plot(foo0$time, foo0$air_temperature, type='l', main = "air temperature prediction")
+    plot(foo0$time, foo0$surface_downwelling_shortwave_flux_in_air, type='l', main = "shortwave flux prediction")
+    plot(foo0$time, foo0$surface_downwelling_longwave_flux_in_air, type='l', main = "longwave flux prediction")
+    plot(foo0$time, foo0$relative_humidity, type='l', main = "relative_humidity prediction")
+    plot(foo0$time, foo0$wind_speed, type='l', main = "wind speed prediction")
+    plot(foo0$time, foo0$precipitation_flux, type='l', main = "precipitation flux prediction")
+  }
+  dev.off()
+}
