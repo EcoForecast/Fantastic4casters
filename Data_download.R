@@ -44,6 +44,15 @@ plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(um
 plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
 dev.off()
 
+
+# definition for directory, sites, date and cycles
+
+base_dir <- "~/Ecological_Forecast/Fantastic4casters/drivers/noaa/NOAAGEFS_1hr"
+site_names <- c("BART","KONZ","OSBS","SRER")
+cycle_names <- c("00","06","12","18")
+
+theDate <- Sys.Date()-1
+
 ## function for download NOAA meteorological prediction data
 
 download_noaa_files_s3 <- function(siteID, date, cycle, local_directory){
@@ -120,13 +129,6 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
   return(combined_met)
 }
 
-# definition for directory, sites, date and cycles
-
-base_dir <- "~/Ecological_Forecast/Fantastic4casters/drivers/noaa/NOAAGEFS_1hr"
-site_names <- c("BART","KONZ","OSBS","SRER")
-cycle_names <- c("00","06","12","18")
-
-theDate <- Sys.Date()-1
 
 # Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
 
