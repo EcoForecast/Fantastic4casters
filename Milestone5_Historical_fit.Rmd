@@ -9,14 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
----
-title: "historical fit milestone"
-author: "Zhenpeng Zuo"
-date: "3/15/2021"
-output: html_document
----
 ```{r}
-library(rjags)
+library(rjags)  
 #library(rnoaa)
 library(daymetr)
 devtools::install_github("EcoForecast/ecoforecastR",force=TRUE)
