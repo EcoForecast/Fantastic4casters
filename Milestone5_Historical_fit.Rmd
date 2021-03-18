@@ -163,17 +163,34 @@ plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="LE",xlim=time[time.rng
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,le,pch="+",cex=0.5)
 
 
 ```
+
 ```{r}
 
-
+#Dynamic Linear Model 
 ef.out <- ecoforecastR::fit_dlm(model=list(obs="y",fixed="~ 1 + X + Tmin"),data)
 names(ef.out)
+#The package returns a list with four elements. `params` and `predict` are both the same mcmc.list objects we get back from JAGS, only split between the parameters and the latent state variables, respectively, to make it easier to perform diagnostics and visualizations:
 
+## parameter diagnostics
+params <- window(ef.out$params,start=1000) ## remove burn-in
+plot(params)
+summary(params)
+cor(as.matrix(params))
+pairs(as.matrix(params))
+
+## confidence interval
+out_DLM <- as.matrix(ef.out$predict)
+ci_DLM <- apply(exp(out_DLM),2,quantile,c(0.025,0.5,0.975))
+plot(time,ci_DLM[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="Flu Index",log='y',xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){ 
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ciEnvelope(time,ci_DLM[1,],ci_DLM[3,],col=col.alpha("lightBlue",0.75))
+points(time,y,pch="+",cex=0.5)
 
 
 
