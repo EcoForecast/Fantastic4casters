@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ---
 title: "Historical_fit_milestone5"
 author: "Cam Reimer"
@@ -146,6 +147,8 @@ points(time,le,pch="+",cex=0.5)
 
 ```
 =======
+=======
+>>>>>>> ca1c782d128e925b60344668a2e25d5c66f3a252
 
 ---
 title: "historical fit milestone"
@@ -185,6 +188,10 @@ newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 ```
 
 ```{r}
+<<<<<<< HEAD
+=======
+#Load target data and select site. In this case we selected the site BART. 
+>>>>>>> ca1c782d128e925b60344668a2e25d5c66f3a252
 Target_30min_BART = subset(Target_30min, siteID = 'BART')
 time = as.Date(Target_30min_BART$time)
 y = Target_30min_BART$nee
@@ -253,6 +260,11 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,y,pch="+",cex=0.5)
+<<<<<<< HEAD
+=======
+
+#We can see that this random walk model does not constrain the uncertainty (indicated by large confidence interval). Indicates that there are other factors controlling NEE besides what it was yesterday. 
+>>>>>>> ca1c782d128e925b60344668a2e25d5c66f3a252
 ```
 ```{r}
 ef.out <- ecoforecastR::fit_dlm(model=list(obs="y",fixed="~ 1 + X + Tmin"),data)
@@ -271,6 +283,9 @@ names(ef.out)
 
 
 
+<<<<<<< HEAD
 
 
 >>>>>>> 1ce031b58d220564f5f96702bd517751a3738499
+=======
+>>>>>>> ca1c782d128e925b60344668a2e25d5c66f3a252
