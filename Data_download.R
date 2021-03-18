@@ -4,14 +4,20 @@
 
 
 basePath <- "C:/Users/zhenp/Documents/test/"
-
-
 graphPath <- paste0(basePath,"graph/")
 dataPath <- paste0(basePath,"data/")
 
+library(tidyverse)
+library(readr)
+
+
 # Download target 30 min data
 
-Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
+Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz",
+                               col_types = cols(
+                                 vswc = col_double(),
+                                 vswc_sd = col_double())
+)
 
 # Save the updated target data as Rdata file
 
@@ -26,11 +32,20 @@ newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 pdf(file = newFilename)
 plot(Target_30min$time,Target_30min$nee, type="l", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_30min$time,Target_30min$le, type="l", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
+plot(Target_30min$time,Target_30min$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
 dev.off()
 
 # Download daily target data
 
-Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
+Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz",
+                              col_types = cols(
+                                time = col_date(format = ""),
+                                siteID = col_character(),
+                                nee = col_double(),
+                                le = col_double(),
+                                vswc = col_double(),
+                                vswc_sd = col_double())
+)
 
 # Save the updated target data as Rdata file
 
@@ -45,6 +60,7 @@ newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 pdf(file = newFilename)
 plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
+plot(Target_daily$time,Target_daily$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
 dev.off()
 
 
@@ -52,7 +68,7 @@ dev.off()
 
 base_dir <- paste0(basePath,"drivers/noaa/NOAAGEFS_1hr")
 site_names <- c("BART","KONZ","OSBS","SRER")
-cycle_names <- c("00","06","12","18")
+cycle_names <- "00"
 
 theDate <- Sys.Date()-1
 
@@ -71,8 +87,6 @@ download_noaa_files_s3 <- function(siteID, date, cycle, local_directory){
 }
 
 ### Setting function for converting the netcdf files to csv files
-
-library(tidyverse)
 
 noaa_gefs_read <- function(base_dir, date, cycle, sites){
   
@@ -136,26 +150,23 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 # Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
 
 for (i in 1:4){
-  for (j in 1:4){
-    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names[j], local_directory <- paste0(basePath,"drivers/"))
-  }
+    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"drivers/"))
 }
 
 # data conversion from cdf to csv, and plot data for ensemble 0 case as an example
-for (j in 1:4){
-  foo = noaa_gefs_read(base_dir, theDate, cycle_names[j], site_names)
+foo = noaa_gefs_read(base_dir, theDate, cycle_names, site_names)
   
-  newFilename <- sprintf("%s%s%s%s.pdf","Plot_GEFS_30min_cycle",cycle_names[j],"_",Sys.Date()-1)
-  newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-  pdf(file = newFilename)
-  for (i in 1:4){
-    foo0 = subset(foo, ensemble==0 & siteID==site_names[i])
-    plot(foo0$time, foo0$air_temperature, type='l', main = "air temperature prediction")
-    plot(foo0$time, foo0$surface_downwelling_shortwave_flux_in_air, type='l', main = "shortwave flux prediction")
-    plot(foo0$time, foo0$surface_downwelling_longwave_flux_in_air, type='l', main = "longwave flux prediction")
-    plot(foo0$time, foo0$relative_humidity, type='l', main = "relative_humidity prediction")
-    plot(foo0$time, foo0$wind_speed, type='l', main = "wind speed prediction")
-    plot(foo0$time, foo0$precipitation_flux, type='l', main = "precipitation flux prediction")
-  }
-  dev.off()
+newFilename <- sprintf("%s%s%s%s.pdf","Plot_GEFS_30min_cycle",cycle_names,"_",Sys.Date()-1)
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+pdf(file = newFilename)
+for (i in 1:4){
+  foo0 = subset(foo, ensemble==0 & siteID==site_names[i])
+  plot(foo0$time, foo0$air_temperature, type='l', main = "air temperature prediction")
+  plot(foo0$time, foo0$surface_downwelling_shortwave_flux_in_air, type='l', main = "shortwave flux prediction")
+  plot(foo0$time, foo0$surface_downwelling_longwave_flux_in_air, type='l', main = "longwave flux prediction")
+  plot(foo0$time, foo0$relative_humidity, type='l', main = "relative_humidity prediction")
+  plot(foo0$time, foo0$wind_speed, type='l', main = "wind speed prediction")
+  plot(foo0$time, foo0$precipitation_flux, type='l', main = "precipitation flux prediction")
 }
+dev.off()
+
