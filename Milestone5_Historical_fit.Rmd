@@ -1,5 +1,6 @@
 
 ---
+
 title: "historical fit milestone"
 author: "Zhenpeng Zuo"
 date: "3/15/2021"
@@ -14,10 +15,23 @@ library(rjags)
 #library(rnoaa)
 library(daymetr)
 
+=======
+title: "Historical_fit_milestone5"
+author: "Cam Reimer"
+date: "3/15/2021"
+output: html_document
+---
+
+```{r}
+library(rjags)
+#library(rnoaa)
+library(daymetr)
+
 remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
+
 basePath <- #Add you PATH!!!!
 graphPath <- paste0(basePath,"graph/")
 dataPath <- paste0(basePath,"data/")
@@ -27,6 +41,13 @@ Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial
                                 vswc = col_double(),
                                 vswc_sd = col_double())
 )
+=======
+basePath <- "C:/Users/camer/Documents/test/"  #change for user
+graphPath <- paste0(basePath,"graph/")
+dataPath <- paste0(basePath,"data/")
+# Download target 30 min data
+Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
+
 # Save the updated target data as Rdata file
 newFilename <- sprintf("%s.Rdata","Target_30min")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
@@ -35,11 +56,15 @@ save(Target_30min, file = newFilename)
 newFilename <- sprintf("%s%s.pdf","Plot_Target_30min_",Sys.Date())
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 # Download daily target data
+
 Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz",
                               col_types = cols(
                                 vswc = col_double(),
                                 vswc_sd = col_double())
 )
+=======
+Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
+
 # Save the updated target data as Rdata file
 newFilename <- sprintf("%s.Rdata","Target_daily")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
@@ -50,10 +75,23 @@ newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 ```
 
 ```{r}
+
 Target_30min_BART = subset(Target_30min, siteID == 'BART')
 time = as.Date(Target_30min_BART$time)
 y = Target_30min_BART$nee
 plot(time,y,type='l',ylab="nee",lwd=2)
+=======
+Target_30min_BART = subset(Target_30min, siteID = 'BART')
+time = as.Date(Target_30min_BART$time)
+y = Target_30min_BART$nee
+y = y[1:10000]
+time = time[1:10000]
+plot(time,y,type='l',ylab="NEE",lwd=2)
+#rm(Target_30min)
+
+le = Target_30min_BART$le
+le = le[1:10000]
+
 ```
 
 ```{r}
@@ -77,6 +115,11 @@ model{
 
 ```{r}
 data <- list(y=y,n=length(y),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+=======
+
+data_le <- list(y=le,n=length(le),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+
 ```
 
 ```{r}
@@ -88,6 +131,17 @@ for(i in 1:nchain){
   y.samp = sample(y2,length(y2),replace=TRUE)
   init[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
+
+=======
+
+init_le <- list()
+le2 = le 
+le2 = na.omit(le2)
+for(i in 1:nchain){
+  y.samp = sample(le2,length(le2),replace=TRUE)
+  init_le[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+}
+
 ```
 
 ```{r}
@@ -95,12 +149,29 @@ j.model   <- jags.model (file = textConnection(RandomWalk),
                              data = data,
                              inits = init,
                              n.chains = 3)
+
+=======
+
+j.model_le   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le,
+                             inits = init_le,
+                             n.chains = 3)
+
+
 ```
 
 ```{r}
 jags.out   <- coda.samples (model = j.model,
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 1000)
+
+=======
+jags.out_le   <- coda.samples (model = j.model_le,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+
+
 ```
 
 ```{r}
@@ -115,6 +186,7 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,y,pch="+",cex=0.5)
+
 ```
 ```{r}
 
@@ -131,4 +203,21 @@ names(ef.out)
 ```
 
 
+
+=======
+
+
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_le)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le,pch="+",cex=0.5)
+
+```
 
