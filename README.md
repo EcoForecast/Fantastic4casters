@@ -45,3 +45,7 @@ Of the data being pulled, the NEON measurements are updated monthly, with each u
 The time series plots will be exported to the "graph" sub-directory under the main directory. 
 
 
+## 2. Historical time-series fit
+
+
+Before generating forecasts, use the R script named "02_Historical Fitting.Rmd" to fit the historical data. For this historical fit of NEE, LE, and soil moisture we created three random walk models. These models are Bayesian state-space models and include data model, process model and priors. The data model is $y[t] \sim N(x[t], \tau_{obs})$ where $y[t]$ is determined by the latent variable ($x[t]$) and some observation error. The process model $x[t] \sim N(x[t-1], \tau_{add})$ states that the following time point is the previous time point plus a Gaussian process error. Lastly, we define priors for the initial conditions, process error and observation error. The prior for the initial conditions is $x[1] \sim N(x_{ic}, \tau_{ic})$ which states that the initial conditions are pulled from a Gaussian distribution. The observation error and process error are both pulled from a gamma distribution, where the distribution parameters are $a_{obs}$ and $r_{obs}$ for the observation error and $a_{add}$ and $r_{add}$ for the process error. 
