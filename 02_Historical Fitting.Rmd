@@ -1,0 +1,216 @@
+
+---
+
+title: "Historical_fit_milestone5"
+author: "Zhenpeng Zuo, Cam Reimer, Nia Bartolucci, Kangjoon Cho"
+date: "3/15/2021"
+output: html_document
+---
+```{r}
+## Package check and load
+
+#install.packages("tidyverse")
+#install.packages("readr")
+library(tidyverse)
+library(readr)
+library(rjags)
+library(daymetr)
+
+remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+```
+
+```{r}
+
+# definition for PATH
+basePath <- getwd() 
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+```
+
+```{r}
+
+# Subsetting BART site
+Target_30min_BART = subset(Target_30min, siteID == 'BART')
+
+# declare 3 target variables (NEE, LE, Soil moisture)
+time = as.Date(Target_30min_BART$time)
+nee = Target_30min_BART$nee
+le = Target_30min_BART$le
+vswc = Target_30min_BART$vswc
+
+```
+
+```{r}
+RandomWalk = "
+model{
+  #### Data Model
+  for(t in 1:n){
+    y[t] ~ dnorm(x[t],tau_obs)
+  }
+  #### Process Model
+  for(t in 2:n){
+    x[t]~dnorm(x[t-1],tau_add)
+  }
+  #### Priors
+  x[1] ~ dnorm(x_ic,tau_ic)
+  tau_obs ~ dgamma(a_obs,r_obs)
+  tau_add ~ dgamma(a_add,r_add)
+}
+"
+```
+
+```{r}
+# list the data for JAGS
+
+data <- list(y=nee,n=length(nee),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+data_le <- list(y=le,n=length(le),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+data_vswc <- list(y=vswc,n=length(vswc),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+```
+
+```{r}
+
+## define initial state of the prediction model using MCMC
+
+nchain = 3
+init <- list()
+nee2 = nee
+nee2 = na.omit(nee2)
+for(i in 1:nchain){
+  y.samp = sample(nee2,length(nee2),replace=TRUE)
+  init[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+}
+
+
+init_le <- list()
+le2 = le 
+le2 = na.omit(le2)
+for(i in 1:nchain){
+  y.samp = sample(le2,length(le2),replace=TRUE)
+  init_le[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+}
+
+init_vswc <- list()
+vswc2 = vswc
+vswc2 = na.omit(vswc2)
+for(i in 1:nchain){
+  y.samp = sample(vswc2, length(vswc2), replace = TRUE)
+  init_vswc[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+}
+
+```
+
+```{r}
+## Run JAGS model using Random Walk
+
+j.model   <- jags.model (file = textConnection(RandomWalk),
+                             data = data,
+                             inits = init,
+                             n.chains = 3)
+
+j.model_le   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le,
+                             inits = init_le,
+                             n.chains = 3)
+
+j.model_vswc   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc,
+                             inits = init_vswc,
+                             n.chains = 3)
+
+```
+
+```{r}
+## MCMC diagnostics
+
+jags.out   <- coda.samples (model = j.model,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+jags.out_le   <- coda.samples (model = j.model_le,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+jags.out_vswc   <- coda.samples (model = j.model_vswc,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+plot(jags.out)
+plot(jags.out_le)
+plot(jags.out_vswc)
+
+```
+
+```{r}
+
+## Save the MCMC output
+
+jags.out   <- coda.samples (model = j.model,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+
+jags.out_le   <- coda.samples (model = j.model_le,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+
+jags.out_vswc   <- coda.samples (model = j.model_vswc,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates
+
+#for NEE
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,y,pch="+",cex=0.5)
+
+#for LE
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_le)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le,pch="+",cex=0.5)
+
+#for VSWC
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_vswc)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,vswc,pch="+",cex=0.5)
+```
+
+
+
