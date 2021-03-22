@@ -6,22 +6,36 @@ output: html_document
 ---
 
 ```{r}
+#install.packages("tidyverse")
+#install.packages("readr")
+library(tidyverse)
+library(readr)
+
 # This chunk is from "TimeSeries.R"
-Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz")
-Target_30min = Target_30min[1,]
+Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz",
+                              col_types = cols(
+                                vswc = col_double(),
+                                vswc_sd = col_double())
+)
 save(Target_30min, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_30min.Rdata")
 
 pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_30min.pdf")
 plot(Target_30min$time,Target_30min$nee, type="l", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_30min$time,Target_30min$le, type="l", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
+plot(Target_30min$time,Target_30min$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
 dev.off()
 
-Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz")
+Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz",
+                              col_types = cols(
+                                vswc = col_double(),
+                                vswc_sd = col_double())
+)
 save(Target_daily, file = "~/Ecological_Forecast/Fantastic4casters/data/Target_daily.Rdata")
 
 pdf(file = "~/Ecological_Forecast/Fantastic4casters/graph/Target_daily.pdf")
 plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
 plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
+plot(Target_daily$time,Target_daily$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
 dev.off()
 
 summary(Target_30min)
