@@ -1,11 +1,10 @@
-
 ---
-
 title: "Historical_fit_milestone5"
 author: "Zhenpeng Zuo, Cam Reimer, Nia Bartolucci, Kangjoon Cho"
 date: "3/15/2021"
 output: html_document
 ---
+
 ```{r}
 ## Package check and load
 
@@ -211,6 +210,5 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc,pch="+",cex=0.5)
 ```
-
 
 
