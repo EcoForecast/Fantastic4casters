@@ -55,20 +55,42 @@ newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 ```
 
 ```{r}
+#Subset Data 
 
 Target_30min_BART = subset(Target_30min, siteID == 'BART')
-time = as.Date(Target_30min_BART$time)
-y = Target_30min_BART$nee
-plot(time,y,type='l',ylab="nee",lwd=2)
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ')
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS')
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER')
 
-
-le = Target_30min_BART$le
-plot(time,le,type='l',ylab="le",lwd=2)
+time_BART = as.Date(Target_30min_BART$time)
+time_KONZ = as.Date(Target_30min_KONZ$time)
+time_OSBS = as.Date(Target_30min_OSBS$time)
+time_SRER = as.Date(Target_30min_SRER$time)
 
 Target_daily_BART = subset(Target_daily, siteID == 'BART')
-time_daily = as.Date(Target_daily_BART$time)
-vswc = Target_daily_BART$vswc
-plot(time_daily, vswc, type = 'l')
+Target_daily_KONZ = subset(Target_daily, siteID == 'KONZ')
+Target_daily_OSBS = subset(Target_daily, siteID == 'OSBS')
+Target_daily_SRER = subset(Target_daily, siteID == 'SRER')
+
+time_daily_BART = as.Date(Target_daily_BART$time)
+time_daily_KONZ = as.Date(Target_daily_KONZ$time)
+time_daily_OSBS = as.Date(Target_daily_OSBS$time)
+time_daily_SRER = as.Date(Target_daily_SRER$time)
+
+nee_BART = Target_30min_BART$nee
+nee_KONZ = Target_30min_KONZ$nee
+nee_OSBS = Target_30min_OSBS$nee
+nee_SRER = Target_30min_SRER$nee
+
+le_BART = Target_30min_BART$le
+le_KONZ = Target_30min_KONZ$le
+le_OSBS = Target_30min_OSBS$le
+le_SRER = Target_30min_SRER$le
+
+vswc_BART = Target_daily_BART$vswc
+vswc_KONZ = Target_daily_KONZ$vswc
+vswc_OSBS = Target_daily_OSBS$vswc
+vswc_SRER = Target_daily_SRER$vswc
 
 ```
 
@@ -92,82 +114,242 @@ model{
 ```
 
 ```{r}
-data <- list(y=y,n=length(y),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+#Set Initial Conditions 
+x_ic_nee = 0
+tau_ic_nee = 10 
 
-data_le <- list(y=le,n=length(le),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_BART <- list(y=nee_BART,n=length(nee_BART),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_KONZ <- list(y=nee_KONZ,n=length(nee_KONZ),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_OSBS <- list(y=nee_OSBS,n=length(nee_OSBS),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_SRER <- list(y=nee_SRER,n=length(nee_SRER),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
 
-data_vswc <- list(y=vswc,n=length(vswc),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+x_ic_le = 200
+tau_ic_le = 10 
 
+data_le_BART <- list(y=le_BART,n=length(le_BART),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_KONZ <- list(y=le_KONZ,n=length(le_KONZ),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_OSBS <- list(y=le_OSBS,n=length(le_OSBS),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_SRER <- list(y=le_SRER,n=length(le_SRER),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+x_ic_vswc = 0.2
+tau_ic_vswc = 10
+
+data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_KONZ <- list(y=vswc_KONZ,n=length(vswc_KONZ),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_OSBS <- list(y=vswc_OSBS,n=length(vswc_OSBS),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_SRER <- list(y=vswc_SRER,n=length(vswc_SRER),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
 ```
 
 ```{r}
+#Set inits 
+
+#NEE
 nchain = 3
-init <- list()
-y2 = y 
-y2 = na.omit(y2)
+init_nee_BART <- list()
+init_nee_KONZ <- list()
+init_nee_OSBS <- list()
+init_nee_SRER <- list()
+y_BART = nee_BART 
+y_KONZ = nee_KONZ
+y_OSBS = nee_OSBS
+y_SRER = nee_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(y2,length(y2),replace=TRUE)
-  init[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_nee_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_nee_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_nee_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_nee_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
 
-
-init_le <- list()
-le2 = le 
-le2 = na.omit(le2)
+#LE
+init_le_BART <- list()
+init_le_KONZ <- list()
+init_le_OSBS <- list()
+init_le_SRER <- list()
+y_BART = le_BART 
+y_KONZ = le_KONZ
+y_OSBS = le_OSBS
+y_SRER = le_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(le2,length(le2),replace=TRUE)
-  init_le[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_le_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_le_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_le_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_le_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
 
-init_vswc <- list()
-vswc2 = vswc
-vswc2 = na.omit(vswc2)
+#VSWC
+init_vswc_BART <- list()
+init_vswc_KONZ <- list()
+init_vswc_OSBS <- list()
+init_vswc_SRER <- list()
+y_BART = vswc_BART 
+y_KONZ = vswc_KONZ
+y_OSBS = vswc_OSBS
+y_SRER = vswc_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(vswc2, length(vswc2), replace = TRUE)
-  init_vswc[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_vswc_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_vswc_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_vswc_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
-
 ```
 
 ```{r}
-j.model   <- jags.model (file = textConnection(RandomWalk),
-                             data = data,
-                             inits = init,
+#BART Model Runs
+
+j.model_nee_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_BART,
+                             inits = init_nee_BART,
                              n.chains = 3)
 
-j.model_le   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_le,
-                             inits = init_le,
+j.model_le_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_BART,
+                             inits = init_le_BART,
                              n.chains = 3)
 
-j.model_vswc   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc,
-                             inits = init_vswc,
+j.model_vswc_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_BART,
+                             inits = init_vswc_BART,
                              n.chains = 3)
 
+jags.out_nee_BART   <- coda.samples (model = j.model_nee_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_BART   <- coda.samples (model = j.model_le_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
 ```
 
 ```{r}
-jags.out   <- coda.samples (model = j.model,
+#KONZ Model Runs
+
+j.model_nee_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_KONZ,
+                             inits = init_nee_KONZ,
+                             n.chains = 3)
+
+j.model_le_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_KONZ,
+                             inits = init_le_KONZ,
+                             n.chains = 3)
+
+j.model_vswc_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_KONZ,
+                             inits = init_vswc_KONZ,
+                             n.chains = 3)
+
+jags.out_nee_KONZ   <- coda.samples (model = j.model_nee_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 1000)
 
-jags.out_le   <- coda.samples (model = j.model_le,
+jags.out_le_KONZ   <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 1000)
 
-jags.out_vswc   <- coda.samples (model = j.model_vswc,
+jags.out_vswc_KONZ   <- coda.samples (model = j.model_vswc_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 1000)
 ```
 
 ```{r}
-#for NEE
+#OSBS Model Runs
+
+j.model_nee_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_OSBS,
+                             inits = init_nee_OSBS,
+                             n.chains = 3)
+
+j.model_le_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_OSBS,
+                             inits = init_le_OSBS,
+                             n.chains = 3)
+
+j.model_vswc_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_OSBS,
+                             inits = init_vswc_OSBS,
+                             n.chains = 3)
+
+jags.out_nee_OSBS   <- coda.samples (model = j.model_nee_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_OSBS   <- coda.samples (model = j.model_le_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_OSBS   <- coda.samples (model = j.model_vswc_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+```
+
+```{r}
+#SRER Model Runs
+
+j.model_nee_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_SRER,
+                             inits = init_nee_SRER,
+                             n.chains = 3)
+
+j.model_le_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_SRER,
+                             inits = init_le_SRER,
+                             n.chains = 3)
+
+j.model_vswc_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_SRER,
+                             inits = init_vswc_SRER,
+                             n.chains = 3)
+
+jags.out_nee_SRER   <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_SRER   <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_SRER   <- coda.samples (model = j.model_vswc_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+```
+
+```{r}
+#BART Graph Output
+
+time = time_BART
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out)
+out <- as.matrix(jags.out_nee_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="NEE",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="BART NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -175,12 +357,11 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,y,pch="+",cex=0.5)
 
-#for LE
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le)
+out <- as.matrix(jags.out_le_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="LE",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="BART LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -188,13 +369,12 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le,pch="+",cex=0.5)
 
-#for VSWC
-time = time_daily
+time = time_daily_BART
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_vswc)
+out <- as.matrix(jags.out_vswc_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="VSWC",xlim=time[time.rng])
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="OSBS VSWC",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -202,6 +382,133 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc,pch="+",cex=0.5)
 ```
+
+```{r}
+#KONZ Graph Output
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_nee_KONZ)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="KONZ NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,y,pch="+",cex=0.5)
+
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_le_KONZ)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="KONZ LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le,pch="+",cex=0.5)
+
+time = time_daily_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_vswc_KONZ)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,vswc,pch="+",cex=0.5)
+```
+
+```{r}
+#OSBS Graph Output
+
+time = time_OSBS
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_nee_OSBS)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="OSBS NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,y,pch="+",cex=0.5)
+
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_le_OSBS)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="OSBS LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le,pch="+",cex=0.5)
+
+time = time_daily_OSBS
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_vswc_OSBS)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="OSBS VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,vswc,pch="+",cex=0.5)
+```
+
+```{r}
+#SRER Graph Output
+
+time = time_SRER
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_nee_SRER)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="SRER NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,y,pch="+",cex=0.5)
+
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_le_SRER)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="SRER LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le,pch="+",cex=0.5)
+
+time = time_daily_SRER
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(jags.out_vswc_SRER)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="SRER VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,vswc,pch="+",cex=0.5)
+```
+
 
 ```{r}
 
