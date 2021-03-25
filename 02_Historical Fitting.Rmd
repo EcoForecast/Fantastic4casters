@@ -19,6 +19,8 @@ remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
+# If you need run data download
+###source('01A_Targetdownload.R')
 
 # definition for PATH
 basePath <- getwd() 
@@ -30,18 +32,54 @@ loadFilename <- sprintf("%s.Rdata","Target_30min")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
 
+# load the data file [daily Target data]
+loadFilename <- sprintf("%s.Rdata","Target_daily")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
 ```
 
 ```{r}
 
-# Subsetting BART site
-Target_30min_BART = subset(Target_30min, siteID == 'BART')
+#Subset Data 
 
-# declare 3 target variables (NEE, LE, Soil moisture)
-time = as.Date(Target_30min_BART$time)
-nee = Target_30min_BART$nee
-le = Target_30min_BART$le
-vswc = Target_30min_BART$vswc
+Target_30min_BART = subset(Target_30min, siteID == 'BART')
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ')
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS')
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER')
+
+time_BART = as.Date(Target_30min_BART$time)
+time_KONZ = as.Date(Target_30min_KONZ$time)
+time_OSBS = as.Date(Target_30min_OSBS$time)
+time_SRER = as.Date(Target_30min_SRER$time)
+
+Target_daily_BART = subset(Target_daily, siteID == 'BART')
+Target_daily_KONZ = subset(Target_daily, siteID == 'KONZ')
+Target_daily_OSBS = subset(Target_daily, siteID == 'OSBS')
+Target_daily_SRER = subset(Target_daily, siteID == 'SRER')
+
+time_daily_BART = as.Date(Target_daily_BART$time)
+time_daily_KONZ = as.Date(Target_daily_KONZ$time)
+time_daily_OSBS = as.Date(Target_daily_OSBS$time)
+time_daily_SRER = as.Date(Target_daily_SRER$time)
+
+nee_BART = Target_30min_BART$nee
+nee_KONZ = Target_30min_KONZ$nee
+nee_OSBS = Target_30min_OSBS$nee
+nee_SRER = Target_30min_SRER$nee
+
+le_BART = Target_30min_BART$le
+le_KONZ = Target_30min_KONZ$le
+le_OSBS = Target_30min_OSBS$le
+le_SRER = Target_30min_SRER$le
+
+vswc_BART = Target_daily_BART$vswc
+vswc_KONZ = Target_daily_KONZ$vswc
+vswc_OSBS = Target_daily_OSBS$vswc
+vswc_SRER = Target_daily_SRER$vswc
 
 ```
 
@@ -65,67 +103,234 @@ model{
 ```
 
 ```{r}
-# list the data for JAGS
+#Set Initial Conditions 
+x_ic_nee = 0
+tau_ic_nee = 10 
 
-data <- list(y=nee,n=length(nee),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_BART <- list(y=nee_BART,n=length(nee_BART),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_KONZ <- list(y=nee_KONZ,n=length(nee_KONZ),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_OSBS <- list(y=nee_OSBS,n=length(nee_OSBS),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_nee_SRER <- list(y=nee_SRER,n=length(nee_SRER),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
 
-data_le <- list(y=le,n=length(le),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+x_ic_le = 200
+tau_ic_le = 10 
 
-data_vswc <- list(y=vswc,n=length(vswc),x_ic=1000,tau_ic=100,a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_BART <- list(y=le_BART,n=length(le_BART),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_KONZ <- list(y=le_KONZ,n=length(le_KONZ),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_OSBS <- list(y=le_OSBS,n=length(le_OSBS),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_SRER <- list(y=le_SRER,n=length(le_SRER),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
 
+x_ic_vswc = 0.2
+tau_ic_vswc = 10
+
+data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_KONZ <- list(y=vswc_KONZ,n=length(vswc_KONZ),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_OSBS <- list(y=vswc_OSBS,n=length(vswc_OSBS),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_vswc_SRER <- list(y=vswc_SRER,n=length(vswc_SRER),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
 ```
 
 ```{r}
+#Set inits 
 
-## define initial state of the prediction model using MCMC
-
+#NEE
 nchain = 3
-init <- list()
-nee2 = nee
-nee2 = na.omit(nee2)
+init_nee_BART <- list()
+init_nee_KONZ <- list()
+init_nee_OSBS <- list()
+init_nee_SRER <- list()
+y_BART = nee_BART 
+y_KONZ = nee_KONZ
+y_OSBS = nee_OSBS
+y_SRER = nee_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(nee2,length(nee2),replace=TRUE)
-  init[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_nee_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_nee_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_nee_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_nee_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
 
-
-init_le <- list()
-le2 = le 
-le2 = na.omit(le2)
+#LE
+init_le_BART <- list()
+init_le_KONZ <- list()
+init_le_OSBS <- list()
+init_le_SRER <- list()
+y_BART = le_BART 
+y_KONZ = le_KONZ
+y_OSBS = le_OSBS
+y_SRER = le_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(le2,length(le2),replace=TRUE)
-  init_le[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_le_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_le_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_le_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_le_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
 
-init_vswc <- list()
-vswc2 = vswc
-vswc2 = na.omit(vswc2)
+#VSWC
+init_vswc_BART <- list()
+init_vswc_KONZ <- list()
+init_vswc_OSBS <- list()
+init_vswc_SRER <- list()
+y_BART = vswc_BART 
+y_KONZ = vswc_KONZ
+y_OSBS = vswc_OSBS
+y_SRER = vswc_SRER
+y_BART = na.omit(y_BART)
+y_KONZ = na.omit(y_KONZ)
+y_OSBS = na.omit(y_OSBS)
+y_SRER = na.omit(y_SRER)
 for(i in 1:nchain){
-  y.samp = sample(vswc2, length(vswc2), replace = TRUE)
-  init_vswc[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_BART,length(y_BART),replace=TRUE)
+  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
+  init_vswc_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
+  init_vswc_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
+  init_vswc_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
+```
 
+
+```{r}
+#BART Model Runs
+
+j.model_nee_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_BART,
+                             inits = init_nee_BART,
+                             n.chains = 3)
+
+j.model_le_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_BART,
+                             inits = init_le_BART,
+                             n.chains = 3)
+
+j.model_vswc_BART   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_BART,
+                             inits = init_vswc_BART,
+                             n.chains = 3)
+
+jags.out_nee_BART   <- coda.samples (model = j.model_nee_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_BART   <- coda.samples (model = j.model_le_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
 ```
 
 ```{r}
-## Run JAGS model using Random Walk
+#KONZ Model Runs
 
-j.model   <- jags.model (file = textConnection(RandomWalk),
-                             data = data,
-                             inits = init,
+j.model_nee_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_KONZ,
+                             inits = init_nee_KONZ,
                              n.chains = 3)
 
-j.model_le   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_le,
-                             inits = init_le,
+j.model_le_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_KONZ,
+                             inits = init_le_KONZ,
                              n.chains = 3)
 
-j.model_vswc   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc,
-                             inits = init_vswc,
+j.model_vswc_KONZ   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_KONZ,
+                             inits = init_vswc_KONZ,
                              n.chains = 3)
 
+jags.out_nee_KONZ   <- coda.samples (model = j.model_nee_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_KONZ   <- coda.samples (model = j.model_le_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_KONZ   <- coda.samples (model = j.model_vswc_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
 ```
+
+```{r}
+#OSBS Model Runs
+
+j.model_nee_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_OSBS,
+                             inits = init_nee_OSBS,
+                             n.chains = 3)
+
+j.model_le_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_OSBS,
+                             inits = init_le_OSBS,
+                             n.chains = 3)
+
+j.model_vswc_OSBS   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_OSBS,
+                             inits = init_vswc_OSBS,
+                             n.chains = 3)
+
+jags.out_nee_OSBS   <- coda.samples (model = j.model_nee_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_OSBS   <- coda.samples (model = j.model_le_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_OSBS   <- coda.samples (model = j.model_vswc_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+```
+
+```{r}
+#SRER Model Runs
+
+j.model_nee_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_nee_SRER,
+                             inits = init_nee_SRER,
+                             n.chains = 3)
+
+j.model_le_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_le_SRER,
+                             inits = init_le_SRER,
+                             n.chains = 3)
+
+j.model_vswc_SRER   <- jags.model (file = textConnection(RandomWalk),
+                             data = data_vswc_SRER,
+                             inits = init_vswc_SRER,
+                             n.chains = 3)
+
+jags.out_nee_SRER   <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_le_SRER   <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+
+jags.out_vswc_SRER   <- coda.samples (model = j.model_vswc_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 1000)
+```
+
 
 ```{r}
 ## MCMC diagnostics
@@ -210,5 +415,3 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc,pch="+",cex=0.5)
 ```
-
-
