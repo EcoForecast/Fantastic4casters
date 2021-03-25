@@ -1,60 +1,49 @@
-
 ---
-
 title: "Historical_fit_milestone5"
 author: "Zhenpeng Zuo, Cam Reimer, Nia Bartolucci, Kangjoon Cho"
 date: "3/15/2021"
 output: html_document
 ---
+
 ```{r}
+## Package check and load
+
 #install.packages("tidyverse")
 #install.packages("readr")
 library(tidyverse)
 library(readr)
 library(rjags)
-#library(rnoaa)
 library(daymetr)
 
 remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
+# If you need run data download
+###source('01A_Targetdownload.R')
 
-basePath <- "C:/Users/camer/Documents/test/"  #Add your PATH!!!!
-graphPath <- paste0(basePath,"graph/")
-dataPath <- paste0(basePath,"data/")
-# Download target 30 min data
-Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz",
-                              col_types = cols(
-                                vswc = col_double(),
-                                vswc_sd = col_double())
-)
+# definition for PATH
+basePath <- getwd() 
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
 
-# Save the updated target data as Rdata file
-newFilename <- sprintf("%s.Rdata","Target_30min")
-newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
-save(Target_30min, file = newFilename)
-# Plot 30min target data and export plot as pdf
-newFilename <- sprintf("%s%s.pdf","Plot_Target_30min_",Sys.Date())
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-# Download daily target data
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 
-Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz",
-                              col_types = cols(
-                                vswc = col_double(),
-                                vswc_sd = col_double())
-)
+# load the data file [daily Target data]
+loadFilename <- sprintf("%s.Rdata","Target_daily")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 
-# Save the updated target data as Rdata file
-newFilename <- sprintf("%s.Rdata","Target_daily")
-newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
-save(Target_daily, file = newFilename)
-# Plot daily target data and export plot as pdf
-newFilename <- sprintf("%s%s.pdf","Plot_Target_Daily_",Sys.Date())
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
 ```
 
 ```{r}
+
 #Subset Data 
 
 Target_30min_BART = subset(Target_30min, siteID == 'BART')
@@ -217,6 +206,7 @@ for(i in 1:nchain){
 }
 ```
 
+
 ```{r}
 #BART Model Runs
 
@@ -341,15 +331,57 @@ jags.out_vswc_SRER   <- coda.samples (model = j.model_vswc_SRER,
                                 n.iter = 1000)
 ```
 
-```{r}
-#BART Graph Output
 
-time = time_BART
+```{r}
+## MCMC diagnostics
+
+jags.out   <- coda.samples (model = j.model,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+jags.out_le   <- coda.samples (model = j.model_le,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+jags.out_vswc   <- coda.samples (model = j.model_vswc,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+plot(jags.out)
+plot(jags.out_le)
+plot(jags.out_vswc)
+
+```
+
+```{r}
+
+## Save the MCMC output
+
+jags.out   <- coda.samples (model = j.model,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+
+jags.out_le   <- coda.samples (model = j.model_le,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+
+jags.out_vswc   <- coda.samples (model = j.model_vswc,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 10000)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates
+
+#for NEE
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_BART)
+out <- as.matrix(jags.out)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="BART NEE",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -357,11 +389,12 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,y,pch="+",cex=0.5)
 
+#for LE
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_BART)
+out <- as.matrix(jags.out_le)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
-plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="BART LE",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
+plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -369,12 +402,12 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le,pch="+",cex=0.5)
 
-time = time_daily_BART
+#for VSWC
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_vswc_BART)
+out <- as.matrix(jags.out_vswc)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="OSBS VSWC",xlim=time[time.rng])
+plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="VSWC",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -382,164 +415,3 @@ if(diff(time.rng) < 100){
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc,pch="+",cex=0.5)
 ```
-
-```{r}
-#KONZ Graph Output
-
-time = time_KONZ
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_KONZ)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="KONZ NEE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,y,pch="+",cex=0.5)
-
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_KONZ)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
-plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="KONZ LE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,le,pch="+",cex=0.5)
-
-time = time_daily_KONZ
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_vswc_KONZ)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,vswc,pch="+",cex=0.5)
-```
-
-```{r}
-#OSBS Graph Output
-
-time = time_OSBS
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_OSBS)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="OSBS NEE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,y,pch="+",cex=0.5)
-
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_OSBS)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
-plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="OSBS LE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,le,pch="+",cex=0.5)
-
-time = time_daily_OSBS
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_vswc_OSBS)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="OSBS VSWC",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,vswc,pch="+",cex=0.5)
-```
-
-```{r}
-#SRER Graph Output
-
-time = time_SRER
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_SRER)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-plot(time,ci[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="SRER NEE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,y,pch="+",cex=0.5)
-
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_SRER)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
-plot(time,ci[2,],type='n',ylim=range(le,na.rm=TRUE),ylab="SRER LE",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,le,pch="+",cex=0.5)
-
-time = time_daily_SRER
-time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_vswc_SRER)
-x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## model was fit on log scale
-plot(time,ci[2,],type='n',ylim=range(vswc,na.rm=TRUE),ylab="SRER VSWC",xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
-points(time,vswc,pch="+",cex=0.5)
-```
-
-
-```{r}
-
-#Dynamic Linear Model 
-ef.out <- ecoforecastR::fit_dlm(model=list(obs="y",fixed="~ 1 + X + Tmin"),data)
-names(ef.out)
-#The package returns a list with four elements. `params` and `predict` are both the same mcmc.list objects we get back from JAGS, only split between the parameters and the latent state variables, respectively, to make it easier to perform diagnostics and visualizations:
-
-## parameter diagnostics
-params <- window(ef.out$params,start=1000) ## remove burn-in
-plot(params)
-summary(params)
-cor(as.matrix(params))
-pairs(as.matrix(params))
-
-## confidence interval
-out_DLM <- as.matrix(ef.out$predict)
-ci_DLM <- apply(exp(out_DLM),2,quantile,c(0.025,0.5,0.975))
-plot(time,ci_DLM[2,],type='n',ylim=range(y,na.rm=TRUE),ylab="Flu Index",log='y',xlim=time[time.rng])
-## adjust x-axis label to be monthly if zoomed
-if(diff(time.rng) < 100){ 
-  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
-}
-ciEnvelope(time,ci_DLM[1,],ci_DLM[3,],col=col.alpha("lightBlue",0.75))
-points(time,y,pch="+",cex=0.5)
-
-
-
-
-
-
-```
-
-

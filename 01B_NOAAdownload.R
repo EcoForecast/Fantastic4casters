@@ -1,72 +1,15 @@
 ## Update data daily using cron
-# This code is based on "Milestone4_Data_download.Rmd" 
 # setting the terrestral data script to run at 5:00 AM daily
-
-
-basePath <- "C:/Users/zhenp/Documents/test/"
-graphPath <- paste0(basePath,"graph/")
-dataPath <- paste0(basePath,"data/")
 
 library(tidyverse)
 library(readr)
 
-
-# Download target 30 min data
-
-Target_30min<-readr::read_csv ("https://data.ecoforecast.org/targets/terrestrial/terrestrial_30min-targets.csv.gz",
-                               col_types = cols(
-                                 vswc = col_double(),
-                                 vswc_sd = col_double())
-)
-
-# Save the updated target data as Rdata file
-
-newFilename <- sprintf("%s.Rdata","Target_30min")
-newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
-save(Target_30min, file = newFilename)
-
-# Plot 30min target data and export plot as pdf
-
-newFilename <- sprintf("%s%s.pdf","Plot_Target_30min_",Sys.Date())
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-pdf(file = newFilename)
-plot(Target_30min$time,Target_30min$nee, type="l", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
-plot(Target_30min$time,Target_30min$le, type="l", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
-plot(Target_30min$time,Target_30min$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
-dev.off()
-
-# Download daily target data
-
-Target_daily<-readr::read_csv("https://data.ecoforecast.org/targets/terrestrial/terrestrial_daily-targets.csv.gz",
-                              col_types = cols(
-                                time = col_date(format = ""),
-                                siteID = col_character(),
-                                nee = col_double(),
-                                le = col_double(),
-                                vswc = col_double(),
-                                vswc_sd = col_double())
-)
-
-# Save the updated target data as Rdata file
-
-newFilename <- sprintf("%s.Rdata","Target_daily")
-newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
-save(Target_daily, file = newFilename)
-
-# Plot daily target data and export plot as pdf
-
-newFilename <- sprintf("%s%s.pdf","Plot_Target_Daily_",Sys.Date())
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-pdf(file = newFilename)
-plot(Target_daily$time,Target_daily$nee, type="p", xlab = "Time", ylab = "NEE(umol CO2 m-2 s-1)")
-plot(Target_daily$time,Target_daily$le, type="p", xlab = "Time", ylab = "Latent Heat Flux (W/m^2)")
-plot(Target_daily$time,Target_daily$vswc, type="l", xlab = "Time", ylab = "Soil Moisture (%)")
-dev.off()
-
-
 # definition for directory, sites, date and cycles
 
-base_dir <- paste0(basePath,"drivers/noaa/NOAAGEFS_1hr")
+basePath <- getwd()
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+base_dir <- paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr")
 site_names <- c("BART","KONZ","OSBS","SRER")
 cycle_names <- "00"
 
@@ -150,12 +93,12 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 # Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
 
 for (i in 1:4){
-    download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"drivers/"))
+  download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"drivers/"))
 }
 
 # data conversion from cdf to csv, and plot data for ensemble 0 case as an example
 foo = noaa_gefs_read(base_dir, theDate, cycle_names, site_names)
-  
+
 newFilename <- sprintf("%s%s%s%s.pdf","Plot_GEFS_30min_cycle",cycle_names,"_",Sys.Date()-1)
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
 pdf(file = newFilename)
