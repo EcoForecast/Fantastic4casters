@@ -4,8 +4,8 @@
 
 
 basePath <- getwd()
-graphPath <- paste0(basePath,"graph/")
-dataPath <- paste0(basePath,"data/")
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
 site_names <- c("BART","KONZ","OSBS","SRER")
 
 library(tidyverse)
