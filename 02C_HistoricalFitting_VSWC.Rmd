@@ -14,8 +14,8 @@ library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
-
-remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+library(ecoforecastR)
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
@@ -159,22 +159,64 @@ j.model_vswc_SRER   <- jags.model (file = textConnection(RandomWalk),
 #MCMC diagnostics & Burn-in test
 jags.out_vswc_BART <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_vswc_SRER <- coda.samples (model = j.model_vswc_SRER,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 
 plot(jags.out_vswc_BART)
 plot(jags.out_vswc_KONZ)
 plot(jags.out_vswc_OSBS)
 plot(jags.out_vswc_SRER)
 
+```
+
+```{r}
+## BART
+burnin = 1400                                ## determine convergence
+jags.burn <- window(jags.out_vswc_BART,start=burnin)  ## remove burn-in
+plot(jags.burn)                             ## check diagnostics post burn-in
+
+GBR <- gelman.diag(jags.out_vswc_BART)
+GBR
+
+effectiveSize(jags.out_vswc_BART)
+
+##KONZ
+burnin = 1400                                ## determine convergence
+jags.burn <- window(jags.out_vswc_KONZ,start=burnin)  ## remove burn-in
+plot(jags.burn)                             ## check diagnostics post burn-in
+
+GBR <- gelman.diag(jags.out_vswc_KONZ)
+GBR
+
+effectiveSize(jags.out_vswc_KONZ)
+
+##OSBS
+burnin = 1400                                ## determine convergence
+jags.burn <- window(jags.out_vswc_OSBS,start=burnin)  ## remove burn-in
+plot(jags.burn)                             ## check diagnostics post burn-in
+
+GBR <- gelman.diag(jags.out_vswc_OSBS)
+GBR
+
+effectiveSize(jags.out_vswc_OSBS)
+
+##SRER
+burnin = 1400                                ## determine convergence
+jags.burn <- window(jags.out_vswc_SRER,start=burnin)  ## remove burn-in
+plot(jags.burn)                             ## check diagnostics post burn-in
+
+GBR <- gelman.diag(jags.out_vswc_SRER)
+GBR
+
+effectiveSize(jags.out_vswc_SRER)
 ```
 
 ```{r}
