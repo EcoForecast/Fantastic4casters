@@ -212,6 +212,26 @@ eS_SRER <- effectiveSize(jags.burn_nee_SRER)
 ```
 
 ```{r}
+#Save model output for later 
+
+newFilename <- sprintf("%s.Rdata", "NEE_BART_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_nee_BART, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "NEE_KONZ_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_nee_KONZ, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "NEE_OSBS_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_nee_OSBS, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "NEE_SRER_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_nee_SRER, file = newFilename)
+```
+
+```{r}
 ## Plot the model and data time series with interval estimates
 
 #for BART
