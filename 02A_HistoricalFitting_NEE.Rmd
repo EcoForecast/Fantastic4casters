@@ -178,24 +178,38 @@ plot(jags.out_nee_SRER)
 ```
 
 ```{r}
-## remove burn-in and save MCMC output
+#Remove Burn-in
+burnin = 500
+jags.burn_nee_BART <- window(jags.out_nee_BART,start=burnin)  ## remove burn-in
+plot(jags.burn__nee_BART)
 
-jags.out_nee_BART   <- coda.samples (model = j.model_nee_BART,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_nee_KONZ   <- coda.samples (model = j.model_nee_KONZ,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_nee_OSBS   <- coda.samples (model = j.model_nee_OSBS,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_nee_SRER   <- coda.samples (model = j.model_nee_SRER,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
+jags.burn_nee_KONZ <- window(jags.out_nee_KONZ,start=burnin)
+plot(jags.burn_nee_KONZ)
 
+jags.burn_nee_OSBS <- window(jags.out_nee_OSBS,start=burnin)
+plot(jags.burn_nee_OSBS)
+
+jags.burn_nee_SRER <- window(jags.out_nee_SRER,start=burnin)
+plot(jags.burn_nee_SRER)
 ```
 
+```{r}
+#Diagnostics
+GBR_BART <- gelman.plot(jags.out_nee_BART)
+GBR_KONZ <- gelman.plot(jags.out_nee_KONZ)
+GBR_OSBS <- gelman.plot(jags.out_nee_OSBS)
+GBR_SRER <- gelman.plot(jags.out_nee_SRER)
 
+converge_BART <- gelman.diag(jags.burn_nee_BART)
+converge_KONZ <- gelman.diag(jags.burn_nee_KONZ)
+converge_OSBS <- gelman.diag(jags.burn_nee_OSBS)
+converge_SRER <- gelman.diag(jags.burn_nee_SRER)
+
+eS_BART <- effectiveSize(jags.burn_nee_BART)
+eS_KONZ <- effectiveSize(jags.burn_nee_KONZ)
+eS_OSBS <- effectiveSize(jags.burn_nee_OSBS)
+eS_SRER <- effectiveSize(jags.burn_nee_SRER)
+```
 
 ```{r}
 ## Plot the model and data time series with interval estimates
