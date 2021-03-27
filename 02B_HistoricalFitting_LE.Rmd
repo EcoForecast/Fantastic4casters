@@ -14,8 +14,9 @@ library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
+source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 
-remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
@@ -159,21 +160,70 @@ j.model_le_SRER   <- jags.model (file = textConnection(RandomWalk),
 #MCMC diagnostics & Burn-in test
 jags.out_le_BART <- coda.samples (model = j.model_le_BART,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 50000)
 jags.out_le_KONZ <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 50000)
 jags.out_le_OSBS <- coda.samples (model = j.model_le_OSBS,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 50000)
 jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 50000)
 
 plot(jags.out_le_BART)
 plot(jags.out_le_KONZ)
 plot(jags.out_le_OSBS)
 plot(jags.out_le_SRER)
+
+newFilename <- sprintf("%s.Rdata", "LE_BART_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_le_BART, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "LE_KONZ_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_le_KONZ, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "LE_OSBS_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_le_OSBS, file = newFilename)
+
+newFilename <- sprintf("%s.Rdata", "LE_SRER_JAGS")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(jags.burn_le_SRER, file = newFilename)
+
+```
+
+```{r}
+#BART
+burnin = 11400
+jags.burn_le_BART <- window(jags.out_le_BART,start=burnin)  ## remove burn-in
+plot(jags.burn_le_BART )
+BGR_le_BART <- gelman.diag(jags.burn_le_BART )
+effectiveSize(jags.burn_le_BART)
+
+#KONZ
+burnin = 11400
+jags.burn_le_KONZ <- window(jags.out_le_KONZ,start=burnin)  ## remove burn-in
+plot(jags.burn_le_KONZ )
+BGR_le_KONZ <- gelman.diag(jags.burn_le_KONZ )
+effectiveSize(jags.burn_le_KONZ)
+
+#OSBS
+burnin = 11400
+jags.burn_le_OSBS <- window(jags.out_le_OSBS,start=burnin)  ## remove burn-in
+plot(jags.burn_le_OSBS )
+BGR_le_OSBS <- gelman.diag(jags.burn_le_OSBS )
+effectiveSize(jags.burn_le_OSBS)
+
+
+#SRER
+burnin = 11400
+jags.burn_le_SRER <- window(jags.out_le_SRER,start=burnin)  ## remove burn-in
+plot(jags.burn_le_SRER)
+BGR_le_OSBS <- gelman.diag(jags.burn_le_SRER )
+effectiveSize(jags.burn_le_SRER)
+
 
 ```
 
