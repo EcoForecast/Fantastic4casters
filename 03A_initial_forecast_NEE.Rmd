@@ -1,0 +1,64 @@
+---
+title: "03A_initial_forecast_NEE"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "3/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# libraries
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# PATH definitions
+basePath <- "C:/Users/zhenp/Document/test"
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+
+# Load historical time-series fitting
+
+# Load 30-min target data
+
+# Load daily target data
+
+# Load climate forecasts
+
+```
+
+```{r}
+# Forecast model
+
+```
+
+```{r}
+# Initial conditions
+
+# Set inits
+
+```
+
+```{r}
+# Run forecasts
+
+# MCMC diagnostics & Burn-in tests
+
+```
+
+```{r}
+# Remove burn-in and save MCMC output
+
+```
+
+```{r}
+# Plot the historical and forecast time-series with uncertainty partitioning
+
+```
+
+
+
+
+
+
+
