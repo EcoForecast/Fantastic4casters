@@ -124,12 +124,12 @@ model{
   }
   
   #### Data Model: precip
-  for(t in 1:nt){
-  z[i,t] ~ dnorm(x[i,t],tau_precip)
+ for(t in 1:n){
+    z[t] ~ dnorm(Precipdata[t],tau_precip)
   }
   #### Process Model
   for(t in 2:n){
-    Dnew[t]=x[t-1] + precip_BART[t]
+    Dnew[t]=rho*x[t-1] + PrecipSens*precip_BART[t]
     #Dnew[t]=rho*x[t-1] + PrecipSens*Precipdata[t]
     x[t]~dnorm(Dnew[t],tau_precip)
   }
@@ -138,6 +138,7 @@ model{
   tau_obs ~ dgamma(a_obs,r_obs)
   tau_add ~ dgamma(a_add,r_add)
   tau_precip ~ dgamma(.5,.5)
+  PrecipSens ~ dgamma(.5,.5)
   rho ~ dgamma(.5,.5)
 }
 "
@@ -169,7 +170,7 @@ y_BART = na.omit(y_BART)
 
 for(i in 1:nchain){
   y.samp = sample(y_BART,length(y_BART),replace=TRUE)
-  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp),tau_precip=.5,PrecipSens=1,rho=1)
 }
 ```
 
@@ -178,7 +179,7 @@ for(i in 1:nchain){
 #BART Model Runs
 
 j.model_vswc_BART   <- jags.model (file = textConnection(PrecipFused),
-                             data = data,
+                             data = data_BART,
                              inits = init_vswc_BART,
                              n.chains = 3)
 
