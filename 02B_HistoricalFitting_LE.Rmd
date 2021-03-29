@@ -14,7 +14,8 @@ library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
-source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
@@ -95,7 +96,7 @@ model{
 
 ```{r}
 #Set Initial Conditions 
-x_ic_le = 0
+x_ic_le = 10
 tau_ic_le = 10 
 
 data_le_BART <- list(y=le_BART,n=length(le_BART),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
@@ -135,7 +136,7 @@ for(i in 1:nchain){
 
 
 ```{r}
-#BART Model Runs
+#JAGS Model Runs
 
 j.model_le_BART   <- jags.model (file = textConnection(RandomWalk),
                              data = data_le_BART,
@@ -160,102 +161,229 @@ j.model_le_SRER   <- jags.model (file = textConnection(RandomWalk),
 #MCMC diagnostics & Burn-in test
 jags.out_le_BART <- coda.samples (model = j.model_le_BART,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 50000)
+                                n.iter = 5000)
 jags.out_le_KONZ <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 50000)
+                                n.iter = 5000)
 jags.out_le_OSBS <- coda.samples (model = j.model_le_OSBS,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 50000)
+                                n.iter = 5000)
 jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 50000)
+                                n.iter = 5000)
 
+newFilename <- sprintf("%s.jpg","LE_BART_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_le_BART)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_KONZ_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_le_KONZ)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_OSBS_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_le_OSBS)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_le_SRER)
+dev.off()
+
+```
+
+
+```{r}
+# MCMC Diagnostics - KONZ/OSBS accept, BART/SRER rerun
+newFilename <- sprintf("%s.jpg","LE_BART_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_BART <- gelman.plot(jags.out_le_BART)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_KONZ_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_KONZ <- gelman.plot(jags.out_le_KONZ)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_OSBS_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_OSBS <- gelman.plot(jags.out_le_OSBS)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_le_SRER)
+dev.off()
+
+rm(BGR_BART, BGR_KONZ, BGR_OSBS, BGR_SRER)
+
+gelman.diag(jags.out_le_BART)
+gelman.diag(jags.out_le_KONZ)
+gelman.diag(jags.out_le_OSBS)
+gelman.diag(jags.out_le_SRER)
+
+effectiveSize(jags.out_le_BART)
+effectiveSize(jags.out_le_KONZ)
+effectiveSize(jags.out_le_OSBS)
+effectiveSize(jags.out_le_SRER)
+```
+
+```{r}
+# rerun coda.samples
+
+jags.out_le_BART <- coda.samples (model = j.model_le_BART,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+newFilename <- sprintf("%s.jpg","LE_BART_traceplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_le_BART)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_le_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_BART_gelmanplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_OSBS <- gelman.plot(jags.out_le_BART)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_le_SRER)
+dev.off()
+
+gelman.diag(jags.out_le_BART)
+gelman.diag(jags.out_le_SRER)
+
+effectiveSize(jags.out_le_BART)
+effectiveSize(jags.out_le_SRER)
+```
+```{r}
+# rerun coda.samples
+
+jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_3rd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_le_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_3rd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_le_SRER)
+dev.off()
+
+gelman.diag(jags.out_le_SRER)
+
+effectiveSize(jags.out_le_SRER)
+```
+
+```{r}
+# rerun coda.samples
+
+jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_4th")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_le_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_4th")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_le_SRER)
+dev.off()
+
+gelman.diag(jags.out_le_SRER)
+
+effectiveSize(jags.out_le_SRER)
+```
+
+
+```{r}
+rm(jags.out_le_BART, jags.out_le_KONZ, jags.out_le_OSBS, jags.out_le_SRER)
+
+# Generate 3000 post-burn-in samples and save output
 
 newFilename <- sprintf("%s.Rdata", "LE_BART_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_le_BART <- coda.samples (model = j.model_le_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
 save(jags.burn_le_BART, file = newFilename)
+rm(jags.burn_le_BART)
 
 newFilename <- sprintf("%s.Rdata", "LE_KONZ_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_le_KONZ <- coda.samples (model = j.model_le_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
 save(jags.burn_le_KONZ, file = newFilename)
+rm(jags.burn_le_KONZ)
 
 newFilename <- sprintf("%s.Rdata", "LE_OSBS_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_le_OSBS <- coda.samples (model = j.model_le_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
 save(jags.burn_le_OSBS, file = newFilename)
+rm(jags.burn_le_OSBS)
 
 newFilename <- sprintf("%s.Rdata", "LE_SRER_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_le_SRER <- coda.samples (model = j.model_le_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
 save(jags.burn_le_SRER, file = newFilename)
+rm(jags.burn_le_SRER)
 
 ```
-
-```{r}
-#BART
-burnin = 11400
-jags.burn_le_BART <- window(jags.out_le_BART,start=burnin)  ## remove burn-in
-plot(jags.burn_le_BART )
-BGR_le_BART <- gelman.diag(jags.burn_le_BART )
-effectiveSize(jags.burn_le_BART)
-
-#KONZ
-burnin = 11400
-jags.burn_le_KONZ <- window(jags.out_le_KONZ,start=burnin)  ## remove burn-in
-plot(jags.burn_le_KONZ )
-BGR_le_KONZ <- gelman.diag(jags.burn_le_KONZ )
-effectiveSize(jags.burn_le_KONZ)
-
-#OSBS
-burnin = 11400
-jags.burn_le_OSBS <- window(jags.out_le_OSBS,start=burnin)  ## remove burn-in
-plot(jags.burn_le_OSBS )
-BGR_le_OSBS <- gelman.diag(jags.burn_le_OSBS )
-effectiveSize(jags.burn_le_OSBS)
-
-
-#SRER
-burnin = 11400
-jags.burn_le_SRER <- window(jags.out_le_SRER,start=burnin)  ## remove burn-in
-plot(jags.burn_le_SRER)
-BGR_le_OSBS <- gelman.diag(jags.burn_le_SRER )
-effectiveSize(jags.burn_le_SRER)
-
-
-```
-
-```{r}
-## remove burn-in and save MCMC output
-
-jags.out_le_BART   <- coda.samples (model = j.model_le_BART,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_le_KONZ   <- coda.samples (model = j.model_le_KONZ,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_le_OSBS   <- coda.samples (model = j.model_le_OSBS,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-jags.out_le_SRER   <- coda.samples (model = j.model_le_SRER,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
-
-```
-
-
 
 ```{r}
 ## Plot the model and data time series with interval estimates
 
 #for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","LE_BART_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","LE_BART_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_BART
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_BART)
+out <- as.matrix(jags.burn_le_BART)
+rm(jags.burn_le_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(le_BART,na.rm=TRUE),ylab="BART LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -263,13 +391,24 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le_BART,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
 
 #for KONZ
+newFilename <- sprintf("%s.jpg","LE_KONZ_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","LE_KONZ_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_KONZ
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_KONZ)
+out <- as.matrix(jags.burn_le_KONZ)
+rm(jags.burn_le_KONZ)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(le_KONZ,na.rm=TRUE),ylab="KONZ LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -277,13 +416,24 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le_KONZ,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
 
 #for OSBS
+newFilename <- sprintf("%s.jpg","LE_OSBS_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","LE_OSBS_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_OSBS
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_OSBS)
+out <- as.matrix(jags.burn_le_OSBS)
+rm(jags.burn_le_OSBS)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(le_OSBS,na.rm=TRUE),ylab="OSBS LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -291,13 +441,23 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le_OSBS,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
 
 #for SRER
+newFilename <- sprintf("%s.jpg","LE_SRER_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","LE_SRER_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_SRER
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_le_SRER)
+out <- as.matrix(jags.burn_le_SRER)
+rm(jags.burn_le_SRER)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(le_SRER,na.rm=TRUE),ylab="SRER LE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -305,5 +465,7 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,le_SRER,pch="+",cex=0.5)
+dev.off()
 
+rm(out)
 ```
