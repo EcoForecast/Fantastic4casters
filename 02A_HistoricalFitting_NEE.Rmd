@@ -10,12 +10,13 @@ output: html_document
 
 #install.packages("tidyverse")
 #install.packages("readr")
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
+library(ecoforecastR)
 
-remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
@@ -71,6 +72,8 @@ nee_KONZ = Target_30min_KONZ$nee
 nee_OSBS = Target_30min_OSBS$nee
 nee_SRER = Target_30min_SRER$nee
 
+rm(Target_30min, Target_daily)
+
 ```
 
 ```{r}
@@ -94,7 +97,7 @@ model{
 
 ```{r}
 #Set Initial Conditions 
-x_ic_nee = 0
+x_ic_nee = 1
 tau_ic_nee = 10 
 
 data_nee_BART <- list(y=nee_BART,n=length(nee_BART),x_ic= x_ic_nee,tau_ic=tau_ic_nee, a_obs=1,r_obs=1,a_add=1,r_add=1)
@@ -130,11 +133,13 @@ for(i in 1:nchain){
   y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
   init_nee_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
 }
+
+rm(y_BART, y_KONZ, y_OSBS, y_SRER)
 ```
 
 
 ```{r}
-#BART Model Runs
+#JAGS Model Runs
 
 j.model_nee_BART   <- jags.model (file = textConnection(RandomWalk),
                              data = data_nee_BART,
@@ -159,87 +164,229 @@ j.model_nee_SRER   <- jags.model (file = textConnection(RandomWalk),
 #MCMC diagnostics & Burn-in test
 jags.out_nee_BART <- coda.samples (model = j.model_nee_BART,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_nee_KONZ <- coda.samples (model = j.model_nee_KONZ,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_nee_OSBS <- coda.samples (model = j.model_nee_OSBS,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 jags.out_nee_SRER <- coda.samples (model = j.model_nee_SRER,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 1000)
+                                n.iter = 5000)
 
+newFilename <- sprintf("%s.jpg","NEE_BART_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_nee_BART)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_KONZ_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_nee_KONZ)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_OSBS_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_nee_OSBS)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
 plot(jags.out_nee_SRER)
-
+dev.off()
 ```
 
 ```{r}
-#Remove Burn-in
-burnin = 500
-jags.burn_nee_BART <- window(jags.out_nee_BART,start=burnin)  ## remove burn-in
-plot(jags.burn__nee_BART)
+# MCMC Diagnostics - BART/KONZ accept, OSBS/SRER rerun
+newFilename <- sprintf("%s.jpg","NEE_BART_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_BART <- gelman.plot(jags.out_nee_BART)
+dev.off()
 
-jags.burn_nee_KONZ <- window(jags.out_nee_KONZ,start=burnin)
-plot(jags.burn_nee_KONZ)
+newFilename <- sprintf("%s.jpg","NEE_KONZ_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_KONZ <- gelman.plot(jags.out_nee_KONZ)
+dev.off()
 
-jags.burn_nee_OSBS <- window(jags.out_nee_OSBS,start=burnin)
-plot(jags.burn_nee_OSBS)
+newFilename <- sprintf("%s.jpg","NEE_OSBS_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_OSBS <- gelman.plot(jags.out_nee_OSBS)
+dev.off()
 
-jags.burn_nee_SRER <- window(jags.out_nee_SRER,start=burnin)
-plot(jags.burn_nee_SRER)
+newFilename <- sprintf("%s.jpg","NEE_SRER_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_nee_SRER)
+dev.off()
+
+rm(BGR_BART, BGR_KONZ, BGR_OSBS, BGR_SRER)
+
+gelman.diag(jags.out_nee_BART)
+gelman.diag(jags.out_nee_KONZ)
+gelman.diag(jags.out_nee_OSBS)
+gelman.diag(jags.out_nee_SRER)
+
+effectiveSize(jags.out_nee_BART)
+effectiveSize(jags.out_nee_KONZ)
+effectiveSize(jags.out_nee_OSBS)
+effectiveSize(jags.out_nee_SRER)
 ```
 
 ```{r}
-#Diagnostics
-GBR_BART <- gelman.plot(jags.out_nee_BART)
-GBR_KONZ <- gelman.plot(jags.out_nee_KONZ)
-GBR_OSBS <- gelman.plot(jags.out_nee_OSBS)
-GBR_SRER <- gelman.plot(jags.out_nee_SRER)
+# rerun coda.samples
 
-converge_BART <- gelman.diag(jags.burn_nee_BART)
-converge_KONZ <- gelman.diag(jags.burn_nee_KONZ)
-converge_OSBS <- gelman.diag(jags.burn_nee_OSBS)
-converge_SRER <- gelman.diag(jags.burn_nee_SRER)
+jags.out_nee_OSBS <- coda.samples (model = j.model_nee_OSBS,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+jags.out_nee_SRER <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+newFilename <- sprintf("%s.jpg","NEE_OSBS_traceplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_nee_OSBS)
+dev.off()
 
-eS_BART <- effectiveSize(jags.burn_nee_BART)
-eS_KONZ <- effectiveSize(jags.burn_nee_KONZ)
-eS_OSBS <- effectiveSize(jags.burn_nee_OSBS)
-eS_SRER <- effectiveSize(jags.burn_nee_SRER)
+newFilename <- sprintf("%s.jpg","NEE_SRER_traceplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_nee_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_OSBS_gelmanplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_OSBS <- gelman.plot(jags.out_nee_OSBS)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_gelmanplot_2nd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_nee_SRER)
+dev.off()
+
+gelman.diag(jags.out_nee_OSBS)
+gelman.diag(jags.out_nee_SRER)
+
+effectiveSize(jags.out_nee_OSBS)
+effectiveSize(jags.out_nee_SRER)
 ```
 
 ```{r}
-#Save model output for later 
+# rerun coda.samples
+
+jags.out_nee_SRER <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_traceplot_3rd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_nee_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_gelmanplot_3rd")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_nee_SRER)
+dev.off()
+
+gelman.diag(jags.out_nee_SRER)
+
+effectiveSize(jags.out_nee_SRER)
+```
+
+```{r}
+# rerun coda.samples
+
+jags.out_nee_SRER <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("tau_add","tau_obs"),
+                                n.iter = 5000)
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_traceplot_4th")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+plot(jags.out_nee_SRER)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","NEE_SRER_gelmanplot_4th")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+jpeg(file = newFilename)
+BGR_SRER <- gelman.plot(jags.out_nee_SRER)
+dev.off()
+
+gelman.diag(jags.out_nee_SRER)
+
+effectiveSize(jags.out_nee_SRER)
+```
+
+
+```{r}
+rm(jags.out_nee_BART, jags.out_nee_KONZ, jags.out_nee_OSBS, jags.out_nee_SRER)
+
+# Generate 3000 post-burn-in samples and save output
 
 newFilename <- sprintf("%s.Rdata", "NEE_BART_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_nee_BART <- coda.samples (model = j.model_nee_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
 save(jags.burn_nee_BART, file = newFilename)
+rm(jags.burn_nee_BART)
 
 newFilename <- sprintf("%s.Rdata", "NEE_KONZ_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_nee_KONZ <- coda.samples (model = j.model_nee_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
 save(jags.burn_nee_KONZ, file = newFilename)
+rm(jags.burn_nee_KONZ)
 
 newFilename <- sprintf("%s.Rdata", "NEE_OSBS_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_nee_OSBS <- coda.samples (model = j.model_nee_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
 save(jags.burn_nee_OSBS, file = newFilename)
+rm(jags.burn_nee_OSBS)
 
 newFilename <- sprintf("%s.Rdata", "NEE_SRER_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_nee_SRER <- coda.samples (model = j.model_nee_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
 save(jags.burn_nee_SRER, file = newFilename)
+rm(jags.burn_nee_SRER)
+
 ```
+
 
 ```{r}
 ## Plot the model and data time series with interval estimates
 
 #for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","NEE_BART_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","NEE_BART_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_BART
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_BART)
+out <- as.matrix(jags.burn_nee_BART)
+rm(jags.burn_nee_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(nee_BART,na.rm=TRUE),ylab="BART NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -247,13 +394,24 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,nee_BART,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
 
 #for KONZ
+newFilename <- sprintf("%s.jpg","NEE_KONZ_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","NEE_KONZ_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_KONZ
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_KONZ)
+out <- as.matrix(jags.burn_nee_KONZ)
+rm(jags.burn_nee_KONZ)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(nee_KONZ,na.rm=TRUE),ylab="KONZ NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -261,13 +419,24 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,nee_KONZ,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
 
 #for OSBS
+newFilename <- sprintf("%s.jpg","NEE_OSBS_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","NEE_OSBS_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_OSBS
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_OSBS)
+out <- as.matrix(jags.burn_nee_OSBS)
+rm(jags.burn_nee_OSBS)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(nee_OSBS,na.rm=TRUE),ylab="OSBS NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -275,13 +444,24 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,nee_OSBS,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
 
 #for SRER
+newFilename <- sprintf("%s.jpg","NEE_SRER_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","NEE_SRER_JAGS")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = time_SRER
 time.rng = c(1,length(time)) ## adjust to zoom in and out
-out <- as.matrix(jags.out_nee_SRER)
+out <- as.matrix(jags.burn_nee_SRER)
+rm(jags.burn_nee_SRER)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
 plot(time,ci[2,],type='n',ylim=range(nee_SRER,na.rm=TRUE),ylab="SRER NEE",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
@@ -289,5 +469,9 @@ if(diff(time.rng) < 100){
 }
 ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,nee_SRER,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
 
 ```
+
