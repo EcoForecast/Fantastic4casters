@@ -110,8 +110,8 @@ Soil_Moisture_SRER<- SoilMoisture_SRER_all[700:1064,]
 data_SRER<- cbind(Soil_Moisture_SRER, Precip_SRER)
 
 
-vswc_BART = data$vswc
-precip_BART=data$prcp..mm.day.
+vswc_BART = data_BART$vswc
+precip_BART=data_BART$prcp..mm.day.
 
 ```
 
@@ -124,13 +124,13 @@ model{
   }
   
   #### Data Model: precip
- for(t in 1:n){
-    z[t] ~ dnorm(Precipdata[t],tau_precip)
+ for(t in 2:n){
+    z[t] ~ dnorm(z[t-1],tau_precip)
   }
   #### Process Model
   for(t in 2:n){
-    Dnew[t]=rho*x[t-1] + PrecipSens*precip_BART[t]
-    #Dnew[t]=rho*x[t-1] + PrecipSens*Precipdata[t]
+    Dnew[t]=rho*x[t-1] + PrecipSens*z[t]
+  
     x[t]~dnorm(Dnew[t],tau_precip)
   }
   #### Priors
@@ -148,13 +148,17 @@ model{
 #Set Initial Conditions 
 x_ic_vswc = 0
 tau_ic_vswc = 10 
-x_ic_precip = 0
+z_ic_precip = 0
 tau_ic_precip =10
 
 
 
 data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
 data_precip_BART <- list(z=precip_BART,n=length(precip_BART),x_ic= x_ic_precip,tau_ic=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1)
+
+
+data<-list(y=vswc_BART,z=precip_BART,n=length(vswc_BART),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1 ) 
+
 ```
 
 ```{r}
@@ -179,7 +183,7 @@ for(i in 1:nchain){
 #BART Model Runs
 
 j.model_vswc_BART   <- jags.model (file = textConnection(PrecipFused),
-                             data = data_BART,
+                             data = data,
                              inits = init_vswc_BART,
                              n.chains = 3)
 
@@ -189,11 +193,12 @@ j.model_vswc_BART   <- jags.model (file = textConnection(PrecipFused),
 #MCMC diagnostics & Burn-in test
 jags.out_vswc_BART <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("tau_add","tau_obs","PrecipSens"),
-                                n.iter = 10)
+                                n.iter = 5000)
 
 
 plot(jags.out_vswc_BART)
 
+gelman.diag(jags.out_vswc_BART)
 
 ```
 
@@ -202,9 +207,10 @@ plot(jags.out_vswc_BART)
 
 jags.out_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("x","tau_add","tau_obs","PrecipSens"),
-                                n.iter = 10)
+                                n.iter = 1000)
 
-
+gelman.diag(jags.out_vswc_BART)
+effectiveSize((jags.out_vswc_BART))
 ```
 
 
@@ -213,7 +219,7 @@ jags.out_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
 ## Plot the model and data time series with interval estimates
 
 #for BART
-time = time_BART
+time = data_BART$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.out_vswc_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
