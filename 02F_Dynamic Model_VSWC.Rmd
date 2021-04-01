@@ -14,7 +14,8 @@ library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
-source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
@@ -44,6 +45,37 @@ site_names <- c("BART","KONZ","OSBS","SRER")
 
 ```{r}
 
+#Subset Data 
+
+Target_30min_BART = subset(Target_30min, siteID == 'BART')
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ')
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS')
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER')
+
+time_BART = as.Date(Target_30min_BART$time)
+time_KONZ = as.Date(Target_30min_KONZ$time)
+time_OSBS = as.Date(Target_30min_OSBS$time)
+time_SRER = as.Date(Target_30min_SRER$time)
+
+Target_daily_BART = subset(Target_daily, siteID == 'BART')
+Target_daily_KONZ = subset(Target_daily, siteID == 'KONZ')
+Target_daily_OSBS = subset(Target_daily, siteID == 'OSBS')
+Target_daily_SRER = subset(Target_daily, siteID == 'SRER')
+
+time_daily_BART = as.Date(Target_daily_BART$time)
+time_daily_KONZ = as.Date(Target_daily_KONZ$time)
+time_daily_OSBS = as.Date(Target_daily_OSBS$time)
+time_daily_SRER = as.Date(Target_daily_SRER$time)
+
+vswc_BART = Target_30min_BART$vswc
+vswc_KONZ = Target_30min_KONZ$vswc
+vswc_OSBS = Target_30min_OSBS$vswc
+vswc_SRER = Target_30min_SRER$vswc
+
+```
+
+```{r}
+
 #BART
 
 daymet_BART <- daymetr::download_daymet(site = "BART",
@@ -52,13 +84,13 @@ daymet_BART <- daymetr::download_daymet(site = "BART",
                                         start = 2019,
                                         end = 2020,
                                         internal = TRUE)$data
-df$date <- as.Date(paste(df_a$year,df_a$yday,sep = "-"),"%Y-%j")
+daymet_BART$date <- as.Date(paste(daymet_BART$year,daymet_BART$yday,sep = "-"),"%Y-%j")
 
 Precip_BART<-daymet_BART[,c(1,2,4)]              
 SoilMoisture_BART_all <- as.data.frame(Target_daily_BART[,c(1,2,5)])
 Soil_Moisture_BART<- SoilMoisture_BART_all[700:1064,]
 
-data_BART_all<- cbind(Soil_Moisture_BART_2019, Precip_BART)
+data_BART_all<- cbind(Soil_Moisture_BART, Precip_BART)
 
 #KONZ 
 
@@ -68,7 +100,7 @@ daymet_KONZ <- daymetr::download_daymet(site = "KONZ",
                                         start = 2018,
                                         end = 2020,
                                         internal = TRUE)$data
-df$date <- as.Date(paste(df_a$year,df_a$yday,sep = "-"),"%Y-%j")
+daymet_KONZ$date <- as.Date(paste(daymet_KONZ$year,daymet_KONZ$yday,sep = "-"),"%Y-%j")
 
 Precip_KONZ<-daymet_KONZ[,c(1,2,4)]              
 SoilMoisture_KONZ_all <- as.data.frame(Target_daily_KONZ[,c(1,2,5)])
@@ -85,7 +117,7 @@ daymet_OSBS<- daymetr::download_daymet(site = "OSBS",
                                         start = 2019,
                                         end = 2020,
                                         internal = TRUE)$data
-df$date <- as.Date(paste(df_a$year,df_a$yday,sep = "-"),"%Y-%j")
+daymet_OSBS$date <- as.Date(paste(daymet_OSBS$year,daymet_OSBS$yday,sep = "-"),"%Y-%j")
 
 Precip_OSBS<-daymet_OSBS[,c(1,2,4)]              
 SoilMoisture_OSBS_all <- as.data.frame(Target_daily_OSBS[,c(1,2,5)])
@@ -101,7 +133,7 @@ daymet_SRER<- daymetr::download_daymet(site = "SRER",
                                         start = 2019,
                                         end = 2020,
                                         internal = TRUE)$data
-df$date <- as.Date(paste(df_a$year,df_a$yday,sep = "-"),"%Y-%j")
+daymet_SRER$date <- as.Date(paste(daymet_SRER$year,daymet_SRER$yday,sep = "-"),"%Y-%j")
 
 Precip_SRER<-daymet_SRER[,c(1,2,4)]              
 SoilMoisture_SRER_all <- as.data.frame(Target_daily_SRER[,c(1,2,5)])
@@ -150,6 +182,7 @@ model{
   }
   #### Priors
   x[1] ~ dnorm(x_ic,tau_ic)
+  z[1] ~ dnorm(z_ic_precip,tau_ic_precip)
   tau_obs ~ dgamma(a_obs,r_obs)
   tau_add ~ dgamma(a_add,r_add)
   tau_precip ~ dgamma(.5,.5)
@@ -254,65 +287,84 @@ j.model_vswc_SRER  <- jags.model (file = textConnection(PrecipFused),
 
 ```{r}
 #MCMC diagnostics & Burn-in test
-
-#BART
 jags.out_vswc_BART <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 10000)
-plot(jags.out_vswc_BART)
-
-#KONZ
-jags.out_vswc_KONZ<- coda.samples (model = j.model_vswc_KONZ,
+                                n.iter = 20000)
+jags.out_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
                             variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 10000)
-plot(jags.out_vswc_KONZ)
-
-#OSBS
+                                n.iter = 20000)
 jags.out_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
                             variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 10000)
-plot(jags.out_vswc_OSBS)
-
-#SRER
+                                n.iter = 20000)
 jags.out_vswc_SRER <- coda.samples (model = j.model_vswc_SRER,
                             variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 10000)
-plot(jags.out_vswc_SRER)
-```
+                                n.iter = 20000)
 
+#newFilename <- sprintf("%s.jpg","VSWC_BART_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
+plot(jags.out_vswc_BART)
+#dev.off()
+
+#newFilename <- sprintf("%s.jpg","VSWC_KONZ_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
+plot(jags.out_vswc_KONZ)
+#dev.off()
+
+#newFilename <- sprintf("%s.jpg","VSWC_OSBS_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
+plot(jags.out_vswc_OSBS)
+#dev.off()
+
+#newFilename <- sprintf("%s.jpg","VSWC_SRER_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
+plot(jags.out_vswc_SRER)
+#dev.off()
+```
 
 ```{r}
-#plot to determine burn-in
-#BART
+# MCMC Diagnostics - all sites accept
+#newFilename <- sprintf("%s.jpg","VSWC_BART_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_BART <- gelman.plot(jags.out_vswc_BART)
-#remove burn-in
-burnin = 5000                               ## determine convergence
-jags.burn_BART <- window(jags.out_vswc_BART,start=burnin)  ## remove burn-in
-gelman.diag(jags.burn_BART)
+#dev.off()
 
-#KONZ
+#newFilename <- sprintf("%s.jpg","VSWC_KONZ_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_KONZ <- gelman.plot(jags.out_vswc_KONZ)
-#remove burn-in
-burnin = 6000                               ## determine convergence
-jags.burn_KONZ <- window(jags.out_vswc_KONZ,start=burnin)  ## remove burn-in
-gelman.diag(jags.burn_KONZ)
+#dev.off()
 
-#OSBS
+#newFilename <- sprintf("%s.jpg","VSWC_OSBS_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_OSBS <- gelman.plot(jags.out_vswc_OSBS)
-#remove burn-in
-burnin = 10000                               ## determine convergence
-jags.burn_OSBS <- window(jags.out_vswc_OSBS,start=burnin)  ## remove burn-in
-gelman.diag(jags.burn_OSBS)
+#dev.off()
 
-#SRER
+#newFilename <- sprintf("%s.jpg","VSWC_SRER_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_SRER <- gelman.plot(jags.out_vswc_SRER)
-#remove burn-in
-burnin = 5000                             ## determine convergence
-jags.burn_SRER <- window(jags.out_vswc_SRER,start=burnin)  ## remove burn-in
-gelman.diag(jags.burn_SRER)
+#dev.off()
 
+#rm(BGR_BART, BGR_KONZ, BGR_OSBS, BGR_SRER)
 
+gelman.diag(jags.out_vswc_BART)
+gelman.diag(jags.out_vswc_KONZ)
+gelman.diag(jags.out_vswc_OSBS)
+gelman.diag(jags.out_vswc_SRER)
+
+effectiveSize(jags.out_vswc_BART)
+effectiveSize(jags.out_vswc_KONZ)
+effectiveSize(jags.out_vswc_OSBS)
+effectiveSize(jags.out_vswc_SRER)
 ```
+
+
 
 ```{r}
 ## remove burn-in and save MCMC output
@@ -320,100 +372,169 @@ gelman.diag(jags.burn_SRER)
 #BART
 jags.burn_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 20000)
+                                n.iter = 10000)
 #KONZ
 jags.burn_vswc_KONZ   <- coda.samples (model = j.model_vswc_KONZ,
                             variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 20000)
+                                n.iter = 10000)
 #OSBS
 jags.burn_vswc_OSBS   <- coda.samples (model = j.model_vswc_OSBS,
                             variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 20000)
+                                n.iter = 10000)
 #SRER
 jags.burn_vswc_SRER   <- coda.samples (model = j.model_vswc_SRER,
                             variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
-                                n.iter = 20000)
+                                n.iter = 10000)
 
 
 ```
 
 
+```{r}
+rm(jags.out_vswc_BART, jags.out_vswc_KONZ, jags.out_vswc_OSBS, jags.out_vswc_SRER)
 
+# Generate 3000 post-burn-in samples and save output
+
+newFilename <- sprintf("%s.Rdata", "VSWC_BART_JAGS2")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_vswc_BART <- coda.samples (model = j.model_vswc_BART,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
+save(jags.burn_vswc_BART, file = newFilename)
+rm(jags.burn_vswc_BART)
+
+newFilename <- sprintf("%s.Rdata", "VSWC_KONZ_JAGS2")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+
+save(jags.burn_vswc_KONZ, file = newFilename)
+rm(jags.burn_vswc_KONZ)
+
+newFilename <- sprintf("%s.Rdata", "VSWC_OSBS_JAGS2")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+save(jags.burn_vswc_OSBS, file = newFilename)
+rm(jags.burn_vswc_OSBS)
+
+newFilename <- sprintf("%s.Rdata", "VSWC_SRER_JAGS2")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+jags.burn_vswc_SRER <- coda.samples (model = j.model_vswc_SRER,
+                            variable.names = c("x","tau_add","tau_obs"),
+                                n.iter = 3000)
+save(jags.burn_vswc_SRER, file = newFilename)
+rm(jags.burn_vswc_SRER)
+
+```
 
 
 ```{r}
 ## Plot the model and data time series with interval estimates
 
-# BART
+#for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","VSWC_BART_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","VSWC_BART_JAGS2")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = data_BART_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_BART)
-
+rm(jags.burn_vswc_BART)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci2 <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-#plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
-plot(time,ci2[2,],type='n',ylim=range(.04*ci2,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART vswc",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ciEnvelope(time,ci2[1,],ci2[3,],col=col.alpha("lightBlue",0.75))
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc_BART,pch="+",cex=0.5)
+dev.off()
 
-#KONZ
+rm(out)
+
+
+#for KONZ
+newFilename <- sprintf("%s.jpg","VSWC_KONZ_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","VSWC_KONZ_JAGS2")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = data_KONZ_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_KONZ)
-
+rm(jags.burn_vswc_KONZ)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci2 <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-#plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
-plot(time,ci2[2,],type='n',ylim=range(.02*ci2,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(vswc_KONZ,na.rm=TRUE),ylab="KONZ vswc",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ciEnvelope(time,ci2[1,],ci2[3,],col=col.alpha("lightBlue",0.75))
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc_KONZ,pch="+",cex=0.5)
+dev.off()
 
-#OSBS
+rm(out)
+
+
+#for OSBS
+newFilename <- sprintf("%s.jpg","VSWC_OSBS_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","VSWC_OSBS_JAGS2")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = data_OSBS_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_OSBS)
-
+rm(jags.burn_vswc_OSBS)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci2 <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-#plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
-plot(time,ci2[2,],type='n',ylim=range(.02*ci2,na.rm=TRUE),ylab="OSBS VSWC",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(vswc_OSBS,na.rm=TRUE),ylab="OSBS vswc",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ciEnvelope(time,ci2[1,],ci2[3,],col=col.alpha("lightBlue",0.75))
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc_OSBS,pch="+",cex=0.5)
+dev.off()
 
-#SRER
+rm(out)
+
+
+#for SRER
+newFilename <- sprintf("%s.jpg","VSWC_SRER_modelplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","VSWC_SRER_JAGS2")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 time = data_SRER_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_SRER)
-
+rm(jags.burn_vswc_SRER)
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
-ci2 <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-#plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
-plot(time,ci2[2,],type='n',ylim=range(.05*ci2,na.rm=TRUE),ylab="SRER VSWC",xlim=time[time.rng])
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(vswc_SRER,na.rm=TRUE),ylab="SRER vswc",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ciEnvelope(time,ci2[1,],ci2[3,],col=col.alpha("lightBlue",0.75))
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
 points(time,vswc_SRER,pch="+",cex=0.5)
+dev.off()
 
-
-
-```
-
-
-
-```{r}
+rm(out)
 
 ```
+
+
