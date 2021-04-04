@@ -24,7 +24,7 @@ library(ecoforecastR)
 ###source('01A_Targetdownload.R')
 
 # definition for PATH
-basePath <- getwd() 
+basePath <- "C:/Users/zhenp/Documents/test"
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
 
