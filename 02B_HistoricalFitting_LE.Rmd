@@ -53,10 +53,10 @@ Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ')
 Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS')
 Target_30min_SRER = subset(Target_30min, siteID == 'SRER')
 
-time_BART = as.Date(Target_30min_BART$time)
-time_KONZ = as.Date(Target_30min_KONZ$time)
-time_OSBS = as.Date(Target_30min_OSBS$time)
-time_SRER = as.Date(Target_30min_SRER$time)
+time_BART = Target_30min_BART$time
+time_KONZ = Target_30min_KONZ$time
+time_OSBS = Target_30min_OSBS$time
+time_SRER = Target_30min_SRER$time
 
 Target_daily_BART = subset(Target_daily, siteID == 'BART')
 Target_daily_KONZ = subset(Target_daily, siteID == 'KONZ')
@@ -96,13 +96,13 @@ model{
 
 ```{r}
 #Set Initial Conditions 
-x_ic_le = 10
-tau_ic_le = 10 
+x_ic_le = 0
+tau_ic_le = 0.0001 
 
-data_le_BART <- list(y=le_BART,n=length(le_BART),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_le_KONZ <- list(y=le_KONZ,n=length(le_KONZ),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_le_OSBS <- list(y=le_OSBS,n=length(le_OSBS),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_le_SRER <- list(y=le_SRER,n=length(le_SRER),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_le_BART <- list(y=le_BART,n=length(le_BART),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=0.1,r_obs=0.1,a_add=0.1,r_add=0.1)
+data_le_KONZ <- list(y=le_KONZ,n=length(le_KONZ),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=0.1,r_obs=0.1,a_add=0.1,r_add=0.1)
+data_le_OSBS <- list(y=le_OSBS,n=length(le_OSBS),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=0.1,r_obs=0.1,a_add=0.1,r_add=0.1)
+data_le_SRER <- list(y=le_SRER,n=length(le_SRER),x_ic= x_ic_le,tau_ic=tau_ic_le, a_obs=0.1,r_obs=0.1,a_add=0.1,r_add=0.1)
 ```
 
 ```{r}
@@ -161,16 +161,16 @@ j.model_le_SRER   <- jags.model (file = textConnection(RandomWalk),
 #MCMC diagnostics & Burn-in test
 jags.out_le_BART <- coda.samples (model = j.model_le_BART,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                                n.iter = 20000, thin=10)
 jags.out_le_KONZ <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                                n.iter = 20000, thin=10)
 jags.out_le_OSBS <- coda.samples (model = j.model_le_OSBS,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                                n.iter = 20000, thin=10)
 jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
                             variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                                n.iter = 20000, thin=10)
 
 newFilename <- sprintf("%s.jpg","LE_BART_traceplot")
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
@@ -238,93 +238,6 @@ effectiveSize(jags.out_le_OSBS)
 effectiveSize(jags.out_le_SRER)
 ```
 
-```{r}
-# rerun coda.samples
-
-jags.out_le_BART <- coda.samples (model = j.model_le_BART,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
-jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
-newFilename <- sprintf("%s.jpg","LE_BART_traceplot_2nd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-plot(jags.out_le_BART)
-dev.off()
-
-newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_2nd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-plot(jags.out_le_SRER)
-dev.off()
-
-newFilename <- sprintf("%s.jpg","LE_BART_gelmanplot_2nd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-BGR_OSBS <- gelman.plot(jags.out_le_BART)
-dev.off()
-
-newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_2nd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-BGR_SRER <- gelman.plot(jags.out_le_SRER)
-dev.off()
-
-gelman.diag(jags.out_le_BART)
-gelman.diag(jags.out_le_SRER)
-
-effectiveSize(jags.out_le_BART)
-effectiveSize(jags.out_le_SRER)
-```
-```{r}
-# rerun coda.samples
-
-jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
-
-newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_3rd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-plot(jags.out_le_SRER)
-dev.off()
-
-newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_3rd")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-BGR_SRER <- gelman.plot(jags.out_le_SRER)
-dev.off()
-
-gelman.diag(jags.out_le_SRER)
-
-effectiveSize(jags.out_le_SRER)
-```
-
-```{r}
-# rerun coda.samples
-
-jags.out_le_SRER <- coda.samples (model = j.model_le_SRER,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
-
-newFilename <- sprintf("%s.jpg","LE_SRER_traceplot_4th")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-plot(jags.out_le_SRER)
-dev.off()
-
-newFilename <- sprintf("%s.jpg","LE_SRER_gelmanplot_4th")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
-BGR_SRER <- gelman.plot(jags.out_le_SRER)
-dev.off()
-
-gelman.diag(jags.out_le_SRER)
-
-effectiveSize(jags.out_le_SRER)
-```
-
 
 ```{r}
 rm(jags.out_le_BART, jags.out_le_KONZ, jags.out_le_OSBS, jags.out_le_SRER)
@@ -335,7 +248,7 @@ newFilename <- sprintf("%s.Rdata", "LE_BART_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_le_BART <- coda.samples (model = j.model_le_BART,
                             variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 3000)
+                                n.iter = 10000, thin = 10)
 
 save(jags.burn_le_BART, file = newFilename)
 rm(jags.burn_le_BART)
@@ -344,7 +257,7 @@ newFilename <- sprintf("%s.Rdata", "LE_KONZ_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_le_KONZ <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 3000)
+                                n.iter = 10000, thin = 10)
 
 save(jags.burn_le_KONZ, file = newFilename)
 rm(jags.burn_le_KONZ)
@@ -353,7 +266,7 @@ newFilename <- sprintf("%s.Rdata", "LE_OSBS_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_le_OSBS <- coda.samples (model = j.model_le_OSBS,
                             variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 3000)
+                                n.iter = 10000, thin = 10)
 save(jags.burn_le_OSBS, file = newFilename)
 rm(jags.burn_le_OSBS)
 
@@ -361,7 +274,7 @@ newFilename <- sprintf("%s.Rdata", "LE_SRER_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_le_SRER <- coda.samples (model = j.model_le_SRER,
                             variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 3000)
+                                n.iter = 10000, thin = 10)
 save(jags.burn_le_SRER, file = newFilename)
 rm(jags.burn_le_SRER)
 
