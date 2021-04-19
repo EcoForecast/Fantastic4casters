@@ -212,7 +212,7 @@ load(file = loadFilename)
 ## Forward Simulation
 ### settings
 Nmc = 1000         ## set number of Monte Carlo draws
-N.cols <- c("black","red","green","blue","orange") ## set colors
+N.cols <- c("red","green","blue") ## set colors
 trans <- 0.8       ## set transparancy
 time = 1:length(time_BART)+1681    ## total time (1yr + 35 days)
 time1 = 1:length(time_BART)       ## calibration period
@@ -244,63 +244,39 @@ plot.run()
 ##` @param ppt   Precipitation forecast
 ##` @param Q     Process error (default = 0 for deterministic runs)
 ##` @param n     Size of Monte Carlo ensemble
-#forecastN <- function(IC,betaIntercept,betaX,betainlw,betainsw,sw,lw,Q=0,n=Nmc){
-#  N <- matrix(NA,n,timeN_predict)  ## storage
-#  Nprev <- IC           ## initialize
-#  for(t in 1:timeN_predict){
-#    mu = (1+betaX)*Nprev + betaIntercept + (betainsw*sw[,t]) + (betainlw*lw[,t])
-#    N[,t] <- rlnorm(n,mu,Q)                         ## predict next step
-#    Nprev <- N[,t]                                  ## update IC
-#  }
-#  return(N)
-#}
+forecastN <- function(IC,betaIntercept,betaX,betainlw,betainsw,sw,lw,Q=0,n=Nmc){
+  N <- matrix(NA,n,timeN_predict)  ## storage
+  Nprev <- IC           ## initialize
+  for(t in 1:timeN_predict){
+    mu = (1+betaX)*Nprev + betaIntercept + (betainsw*sw[,t]) + (betainlw*lw[,t])
+    N[,t] <- rnorm(n,mu,Q)                         ## predict next step
+    Nprev <- N[,t]                                  ## update IC
+  }
+  return(N)
+}
 ```
 
 ```{r}
+
 ## calculate mean of all inputs
-sw.mean <- apply(sw_driver_gf,2,mean) ## driver
-lw.mean <- apply(lw_driver_gf,2,mean)
+sw.mean <- matrix(apply(sw_driver_gf,2,mean),1,timeN_predict) ## driver
+lw.mean <- matrix(apply(lw_driver_gf,2,mean),1,timeN_predict)
 ## parameters
 params_mat <- as.matrix(params)
 param.mean <- apply(params_mat,2,mean)
 ## initial conditions
 IC <- as.matrix(predict)
 
-## function test
-n = 1 ## Deterministic prediction
-Q = 0 ## no process error
-N <- matrix(NA,1,timeN_predict)
-IC_tmp = mean(IC[,"x[17520]"])
-Nprev <- IC_tmp
-for(t in 1:timeN_predict){
-  mu = Nprev + param.mean["betaIntercept"] + param.mean["betaX"]*Nprev + param.mean["betainlw"]*sw.mean[t] + param.mean["betainsw"]*lw.mean[t]
-  N[t] <- rlnorm(n,mu,Q)
-  Nprev <- N[t]
-}
-
-```
-
-```{r}
-
-## calculate mean of all inputs
-#sw.mean <- matrix(apply(sw_driver_gf,2,mean),1,timeN_predict) ## driver
-#lw.mean <- matrix(apply(lw_driver_gf,2,mean),1,timeN_predict)
-## parameters
-#params_mat <- as.matrix(params)
-#param.mean <- apply(params_mat,2,mean)
-## initial conditions
-#IC <- as.matrix(predict)
-
 ##Deterministic prediction
-#N.det <- forecastN(IC=mean(IC[,"x[17520]"]),
-#                   betaIntercept=param.mean["betaIntercept"],
-#                   betaX=param.mean["betaX"],
-#                   betainlw=param.mean["betainlw"],
-##                   betainsw=param.mean["betainsw"],
-#                   sw=sw.mean,
-#                   lw=lw.mean,
-#                   Q=0,  ## process error off
-#                   n=1)
+N.det <- forecastN(IC=mean(IC[,"x[17520]"]),
+                   betaIntercept=param.mean["betaIntercept"],
+                   betaX=param.mean["betaX"],
+                   betainlw=param.mean["betainlw"],
+                   betainsw=param.mean["betainsw"],
+                   sw=sw.mean,
+                   lw=lw.mean,
+                   Q=0,  ## process error off
+                   n=1)
 
 ## Plot run
 plot.run()
@@ -308,4 +284,157 @@ lines(time2,N.det,col="purple",lwd=3)
 
 ```
 
+```{r}
+## Monte Carlo Error Propagation
+Nmc = 1000
+#@ sample parameter rows from previous analysis
+prow = sample.int(nrow(params_mat),Nmc,replace=TRUE)
 
+N.I <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=param.mean["betaIntercept"],
+                   betaX=param.mean["betaX"],
+                   betainlw=param.mean["betainlw"],
+                   betainsw=param.mean["betainsw"],
+                   sw=sw.mean,
+                   lw=lw.mean,
+                   Q=0,  ## process error off
+                   n=Nmc)
+
+## Plot run
+plot.run()
+N.I.ci = apply(N.I,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
+
+
+
+```
+
+
+```{r}
+##Parameter Uncertainty
+
+N.IP <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=params_mat[prow,"betaIntercept"],
+                   betaX=params_mat[prow,"betaX"],
+                   betainlw=params_mat[prow,"betainlw"],
+                   betainsw=params_mat[prow,"betainsw"],
+                   sw=sw.mean,
+                   lw=lw.mean,
+                   Q=0,  ## process error off
+                   n=Nmc)
+
+## Plot run
+plot.run()
+N.IP.ci = apply(N.IP,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
+
+```
+
+```{r}
+##Driver Uncertainty
+#sample driver rows
+drow_sw = sample.int(nrow(sw_driver_gf),Nmc,replace = TRUE)
+drow_lw = sample.int(nrow(lw_driver_gf),Nmc,replace = TRUE)
+
+N.IPD <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=params_mat[prow,"betaIntercept"],
+                   betaX=params_mat[prow,"betaX"],
+                   betainlw=params_mat[prow,"betainlw"],
+                   betainsw=params_mat[prow,"betainsw"],
+                   sw=sw_driver_gf[drow_sw,],
+                   lw=lw_driver_gf[drow_lw,],
+                   Q=0,  ## process error off
+                   n=Nmc)
+
+## Plot run
+plot.run()
+N.IPD.ci = apply(N.IPD,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.IPD.ci[1,],N.IPD.ci[3,],col=col.alpha(N.cols[3],trans))
+ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
+
+```
+
+```{r}
+## process error samples
+#Qmc <- 1/sqrt(params_mat[prow,"Q"])  ## convert from precision to standard deviation
+
+#N.IPDE <- forecastN(IC=IC[prow,"x[17520]"],
+#                   betaIntercept=params_mat[prow,"betaIntercept"],
+#                   betaX=params_mat[prow,"betaX"],
+#                   betainlw=params_mat[prow,"betainlw"],
+#                   betainsw=params_mat[prow,"betainsw"],
+#                   sw=sw_driver_gf[drow_sw,],
+#                   lw=lw_driver_gf[drow_lw,],
+#                   Q=Qmc,  ## process error off
+#                   n=Nmc)
+
+## Plot run
+#plot.run()
+#N.IPDE.ci = apply(N.IPDE,2,quantile,c(0.025,0.5,0.975))
+#ecoforecastR::ciEnvelope(time2,N.IPDE.ci[1,],N.IPDE.ci[3,],col=col.alpha(N.cols[4],trans))
+#ecoforecastR::ciEnvelope(time2,N.IPD.ci[1,],N.IPD.ci[3,],col=col.alpha(N.cols[3],trans))
+#ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+#ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+#lines(time2,N.I.ci[2,],lwd=0.5)
+```
+
+```{r}
+## Random effect samples
+#tau.mc <- 1/sqrt(params_mat[prow,"tau_site"]) ## convert from precision to std deviation
+#aNew.mc <- rnorm(Nmc,0,tau.mc)            ## draw out-of-sample predictions of alpha at a new site
+
+#N.IPDEA <- forecastN(IC=IC[prow,"x[17520]"],
+#                   betaIntercept=params_mat[prow,"betaIntercept"],
+#                   betaX=params_mat[prow,"betaX"],
+#                   betainlw=params_mat[prow,"betainlw"],
+#                   betainsw=params_mat[prow,"betainsw"],
+#                   sw=sw_driver_gf[drow_sw,],
+#                   lw=lw_driver_gf[drow_lw,],
+#                   alpha=aNew.mc,
+#                   Q=Qmc,  ## process error off
+#                   n=Nmc)
+
+## Plot run
+#plot.run()
+#N.IPDEA.ci = apply(N.IPDEA,2,quantile,c(0.025,0.5,0.975))
+#ecoforecastR::ciEnvelope(time2,N.IPDEA.ci[1,],N.IPDEA.ci[3,],col=col.alpha(N.cols[5],trans))
+#ecoforecastR::ciEnvelope(time2,N.IPDE.ci[1,],N.IPDE.ci[3,],col=col.alpha(N.cols[4],trans))
+#ecoforecastR::ciEnvelope(time2,N.IPD.ci[1,],N.IPD.ci[3,],col=col.alpha(N.cols[3],trans))
+#ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+#ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+#lines(time2,N.I.ci[2,],lwd=0.5)
+```
+
+```{r}
+### calculation of variances
+varI     <- apply(N.I,2,var)
+varIP    <- apply(N.IP,2,var)
+varIPD   <- apply(N.IPD,2,var)
+#varIPDE  <- apply(N.IPDE,2,var)
+#varIPDEA <- apply(N.IPDEA,2,var)
+varMat   <- rbind(varI,varIP,varIPD)
+
+## out-of-sample stacked area plot
+V.pred.rel <- apply(varMat,2,function(x) {x/max(x)})
+plot(time2,V.pred.rel[1,],ylim=c(0,1),type='n',main="Relative Variance: Out-of-Sample",ylab="Proportion of Variance",xlab="time")
+ciEnvelope(time2,rep(0,ncol(V.pred.rel)),V.pred.rel[1,],col=N.cols[1])
+ciEnvelope(time2,V.pred.rel[1,],V.pred.rel[2,],col=N.cols[2])
+ciEnvelope(time2,V.pred.rel[2,],V.pred.rel[3,],col=N.cols[3])
+ciEnvelope(time2,V.pred.rel[3,],V.pred.rel[3,],col=N.cols[3])
+#ciEnvelope(time2,V.pred.rel[4,],V.pred.rel[5,],col=N.cols[5])
+legend("topright",legend=c("Driver","Parameter","InitCond"),col=rev(N.cols),lty=1,lwd=3)
+
+## in-sample stacked area plot
+#V.pred.rel.in <- apply(varMat[-5,],2,function(x) {x/max(x)})
+#plot(time2,V.pred.rel.in[1,],ylim=c(0,1),type='n',main="Relative Variance: In-Sample",ylab="Proportion of Variance",xlab="time")
+#ciEnvelope(time2,rep(0,ncol(V.pred.rel.in)),V.pred.rel.in[1,],col=N.cols[1])
+#ciEnvelope(time2,V.pred.rel.in[1,],V.pred.rel.in[2,],col=N.cols[2])
+#ciEnvelope(time2,V.pred.rel.in[2,],V.pred.rel.in[3,],col=N.cols[3])
+#ciEnvelope(time2,V.pred.rel.in[3,],V.pred.rel.in[4,],col=N.cols[4])
+#legend("topright",legend=c("Driver","Parameter","InitCond"),col=rev(N.cols[-5]),lty=1,lwd=5)
+```
