@@ -131,7 +131,7 @@ model{
   for(t in 2:n){
     Dnew[t]=rho*x[t-1] + PrecipSens*z[t]
   
-    x[t]~dnorm(Dnew[t],tau_precip)
+    x[t]~dnorm(Dnew[t],tau_add)
   }
   #### Priors
   x[1] ~ dnorm(x_ic,tau_ic)
@@ -139,7 +139,8 @@ model{
   tau_add ~ dgamma(a_add,r_add)
   tau_precip ~ dgamma(.5,.5)
   PrecipSens ~ dgamma(.5,.5)
-  rho ~ dgamma(.5,.5)
+  #rho ~ dgamma(1,1)
+  rho ~ dbeta(1,1)
 }
 "
 ```
@@ -153,11 +154,12 @@ tau_ic_precip =10
 
 
 
-data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_precip_BART <- list(z=precip_BART,n=length(precip_BART),x_ic= x_ic_precip,tau_ic=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1)
+#data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+#data_precip_BART <- list(z=precip_BART,n=length(precip_BART),x_ic= x_ic_precip,tau_ic=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1)
 
 
-data<-list(y=vswc_BART,z=precip_BART,n=length(vswc_BART),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1 ) 
+#data<-list(y=vswc_BART,z=precip_BART,n=length(vswc_BART),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=1,r_obs=1,a_add=1,r_add=1 ) 
+data<-list(y=vswc_BART,z=precip_BART,n=length(vswc_BART),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=.01,r_obs=.01,a_add=.01,r_add=.01 ) 
 
 ```
 
@@ -192,11 +194,22 @@ j.model_vswc_BART   <- jags.model (file = textConnection(PrecipFused),
 ```{r}
 #MCMC diagnostics & Burn-in test
 jags.out_vswc_BART <- coda.samples (model = j.model_vswc_BART,
-                            variable.names = c("tau_add","tau_obs","PrecipSens"),
-                                n.iter = 5000)
+                            variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 1000)
 
 
 plot(jags.out_vswc_BART)
+```
+
+
+```{r}
+
+#plot to determine burn-in
+BGR <- gelman.plot(jags.out_vswc_BART)
+
+#remove burn-in
+burnin = 500                                ## determine convergence
+jags.burn <- window(jags.out,start=burnin)  ## remove burn-in
 
 gelman.diag(jags.out_vswc_BART)
 
@@ -206,13 +219,27 @@ gelman.diag(jags.out_vswc_BART)
 ## remove burn-in and save MCMC output
 
 jags.out_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
-                            variable.names = c("x","tau_add","tau_obs","PrecipSens"),
-                                n.iter = 1000)
+                            variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 5000)
 
-gelman.diag(jags.out_vswc_BART)
-effectiveSize((jags.out_vswc_BART))
+
 ```
 
+
+
+```{r}
+### just plot the data 
+
+plot(time,vswc_BART)
+
+plot(time,precip_BART)
+
+
+
+#summary(precip_BART)
+
+#summary(vswc_BART)
+```
 
 
 ```{r}
@@ -222,9 +249,14 @@ effectiveSize((jags.out_vswc_BART))
 time = data_BART$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.out_vswc_BART)
+
+
+
+
 x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
 ci2 <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
-plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
+#plot(time,ci2[2,],type='n',ylim=range(vswc_BART,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
+plot(time,ci2[2,],type='n',ylim=range(.01*ci2,na.rm=TRUE),ylab="BART VSWC",xlim=time[time.rng])
 ## adjust x-axis label to be monthly if zoomed
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
@@ -234,4 +266,10 @@ points(time,vswc_BART,pch="+",cex=0.5)
 
 
 
+```
+
+
+
+```{r}
+ci2[3,]
 ```

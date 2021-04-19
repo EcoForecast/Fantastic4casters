@@ -230,9 +230,7 @@ effectiveSize(jags.burn_le_SRER)
 ```{r}
 ## remove burn-in and save MCMC output
 
-jags.out_le_BART   <- coda.samples (model = j.model_le_BART,
-                            variable.names = c("x","tau_add","tau_obs"),
-                                n.iter = 2000)
+jags.out_le_BART   <- jags.burn_le_BART
 jags.out_le_KONZ   <- coda.samples (model = j.model_le_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 2000)
@@ -261,7 +259,7 @@ plot(time,ci[2,],type='n',ylim=range(le_BART,na.rm=TRUE),ylab="BART LE",xlim=tim
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
 points(time,le_BART,pch="+",cex=0.5)
 
 #for KONZ
