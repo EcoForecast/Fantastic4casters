@@ -1,0 +1,23 @@
+---
+title: "03C_initial_forecast_SOIL"
+author: "Cam Reimer"
+date: "4/21/2021"
+output: html_document
+---
+
+```{r}
+## Package check and load
+
+#install.packages("tidyverse")
+#install.packages("readr")
+library(tidyverse)
+library(readr)
+library(rjags)
+library(rnoaa)
+library(daymetr)
+library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+```
+
