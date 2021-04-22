@@ -1,0 +1,400 @@
+---
+title: "03A_initial_forecast_NEE"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "3/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# libraries
+library(tidyverse)
+library(readr)
+library(rjags)
+library(daymetr)
+#library(ecoforecastR)
+source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+```
+
+```{r}
+# PATH definitions
+basePath <- getwd() 
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+
+# Define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+# Load historical time-series
+daymet_BART <- daymetr::download_daymet(site = "BART",
+                                        lat = 44.2,
+                                        lon = -71.9,
+                                        start = 2017,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_BART$date = as.Date(daymet_BART[,"yday"], origin=as.Date(paste0(daymet_BART[,"year"],"-01-01"))-1)
+
+daymet_KONZ <- daymetr::download_daymet(site = "KONZ",
+                                        lat = 29.7,
+                                        lon = -82.0,
+                                        start = 2017,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_KONZ$date = as.Date(daymet_KONZ[,"yday"], origin=as.Date(paste0(daymet_KONZ[,"year"],"-01-01"))-1)
+
+daymet_OSBS<- daymetr::download_daymet(site = "OSBS",
+                                        lat = 39.1,
+                                        lon = -96.6,
+                                        start = 2017,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_OSBS$date = as.Date(daymet_OSBS[,"yday"], origin=as.Date(paste0(daymet_OSBS[,"year"],"-01-01"))-1)
+
+daymet_SRER<- daymetr::download_daymet(site = "SRER",
+                                        lat = 31.8,
+                                        lon = -110.8,
+                                        start = 2017,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_SRER$date = as.Date(daymet_SRER[,"yday"], origin=as.Date(paste0(daymet_SRER[,"year"],"-01-01"))-1)
+
+daymet = list()
+daymet[[1]] = daymet_BART[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
+daymet[[2]] = daymet_KONZ[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
+daymet[[3]] = daymet_OSBS[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
+daymet[[4]] = daymet_SRER[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
+names(daymet) = site_names
+#rm("daymet_BART","daymet_KONZ","daymet_OSBS","daymet_SRER")
+
+# Load daily target data
+loadFilename <- sprintf("%s.Rdata","Target_daily")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+target = list()
+target[[1]] = subset(Target_daily, siteID==site_names[1])
+target[[2]] = subset(Target_daily, siteID==site_names[2])
+target[[3]] = subset(Target_daily, siteID==site_names[3])
+target[[4]] = subset(Target_daily, siteID==site_names[4])
+names(target) = site_names
+#rm("Target_daily")
+
+# Download NOAA climate forecasts (hourly) and downsample to daily scale
+download_noaa_files_s3 <- function(siteID, date, cycle="00", local_directory){
+  
+  Sys.setenv("AWS_DEFAULT_REGION" = "data",
+             "AWS_S3_ENDPOINT" = "ecoforecast.org")
+  
+  object <- aws.s3::get_bucket("drivers", prefix=paste0("noaa/NOAAGEFS_1hr/",siteID,"/",date,"/",cycle))
+  
+  for(i in 1:length(object)){
+    aws.s3::save_object(object[[i]], bucket = "drivers", file = file.path(local_directory, object[[i]]$Key))
+  }
+}
+noaa_gefs_read <- function(base_dir, date, cycle, sites){
+  
+  if(!(cycle %in% c("00","06","12","18"))){
+    stop("cycle not available cycles of 00, 06,12,18")
+  }
+  
+  cf_met_vars <- c("air_temperature",
+                   "surface_downwelling_shortwave_flux_in_air",
+                   "surface_downwelling_longwave_flux_in_air",
+                   "relative_humidity",
+                   "wind_speed",
+                   "precipitation_flux")
+  
+  combined_met <- NULL
+  
+  for(i in 1:length(sites)){
+    
+    forecast_dir <- file.path(base_dir, sites[i], lubridate::as_date(date),cycle)
+    
+    forecast_files <- list.files(forecast_dir, full.names = TRUE)
+    
+    if(length(forecast_files) == 0){
+      stop(paste0("no files in ", forecast_dir))
+    }
+    
+    nfiles <-   length(forecast_files)
+    
+    for(j in 1:nfiles){
+      
+      ens <- dplyr::last(unlist(stringr::str_split(basename(forecast_files[j]),"_")))
+      ens <- stringr::str_sub(ens,1,5)
+      noaa_met_nc <- ncdf4::nc_open(forecast_files[j])
+      noaa_met_time <- ncdf4::ncvar_get(noaa_met_nc, "time")
+      origin <- stringr::str_sub(ncdf4::ncatt_get(noaa_met_nc, "time")$units, 13, 28)
+      origin <- lubridate::ymd_hm(origin)
+      noaa_met_time <- origin + lubridate::hours(noaa_met_time)
+      noaa_met <- tibble::tibble(time = noaa_met_time)
+      
+      for(v in 1:length(cf_met_vars)){
+        noaa_met <- cbind(noaa_met, ncdf4::ncvar_get(noaa_met_nc, cf_met_vars[v]))
+      }
+      
+      ncdf4::nc_close(noaa_met_nc)
+      
+      names(noaa_met) <- c("time", cf_met_vars)
+      
+      noaa_met <- noaa_met %>% 
+        dplyr::mutate(siteID = sites[i],
+                      ensemble = as.numeric(stringr::str_sub(ens,4,5))) %>% 
+        dplyr::select("siteID","ensemble","time",all_of(cf_met_vars))
+      
+      combined_met <- rbind(combined_met, noaa_met)
+      
+    }
+  }
+  return(combined_met)
+}
+
+for (S in site_names){
+  download_noaa_files_s3(siteID = S, 
+                         date = "2021-03-01", 
+                         cycle = "00", 
+                         local_directory <- paste0(basePath,"/drivers/"))
+}
+foo = noaa_gefs_read(paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr"), "2021-03-01", "00", site_names)
+
+# Downsample NOAA hourly ensemble weather forecast to daily scale
+downsample_noaa = function (foo) {
+   foo0 = list() # downsampled (daily) NOAA ensemble weather forecasts for the four sites
+   i = 1
+   for (S in site_names) { 
+     for(E in 0:30) { 
+       temp0 = subset(foo, ensemble==E & siteID==S)
+       temp0$time = as.Date(temp0$time, format="%Y-%m-%d")
+       temp_dates = unique(temp0$time)
+       temp1 = data.frame(matrix(nrow=0, ncol=5))
+       names(temp1) = c("date","sw","tmax","tmin","prcp")
+       for (j in 1:length(temp_dates)) {
+         temp1[j,"date"] = as.character.Date(temp_dates[j])
+         temp0_day = subset(temp0, time==temp_dates[j])
+         daylight_period = temp0_day$surface_downwelling_shortwave_flux_in_air > 0
+         daily_sw = mean(temp0_day$surface_downwelling_shortwave_flux_in_air[daylight_period]) # daylight-period shortwave radiation, same definition as daymet data
+         daily_tmax = max(temp0_day$air_temperature)
+         daily_tmin = min(temp0_day$air_temperature)
+         daily_prcp = sum(temp0_day$precipitation_flux*3600) # prcp flux kg/m2/s to prcp mm/h then add together
+         if (!is.nan(daily_sw)) {temp1[j,"sw"] = daily_sw} else {temp1[j,"sw"] = NA}
+         if (!is.nan(daily_tmax)) {temp1[j,"tmax"] = daily_tmax} else{temp1[j,"tmax"] = NA}
+         if (!is.nan(daily_tmin)) {temp1[j,"tmin"] = daily_tmin} else {temp1[j,"tmin"] = NA}
+         if (!is.nan(daily_prcp)) {temp1[j,"prcp"] = daily_prcp} else {temp1[j,"prcp"] = NA}
+       }
+       foo0[[i]] = temp1
+       #rm("temp0","temp1","temp_dates","temp0_day","daily_sw")
+       foo_name = paste0(S,".",E)
+       names(foo0)[i] = foo_name
+       i = i + 1
+     }
+   }
+   return (foo0)
+}
+noaa = downsample_noaa(foo)
+#rm("foo")
+
+# Stitch downwelling shortwave radiation from DAYMET monitoring and NOAA ensembles
+stitch_daymet_noaa= function(daymet, foo0){
+  temp = list()
+  for (i in 1:length(foo0)) {
+    siteID = substr(names(foo0)[i], start=1, stop=regexpr(".",names(foo0)[i],fixed=T)-1)
+    ensemble = substr(names(foo0)[i], start=regexpr(".",names(foo0)[i],fixed=T)+1, stop=nchar(names(foo0)[i]))
+    daymet_i = daymet[[siteID]]
+    noaa_i = foo0[[i]]
+    
+    time_daymet_noaa = c(daymet_i$date,seq(from=as.Date(daymet_i$date[length(daymet_i$date)])+1,to=as.Date(noaa_i$date[1])-1,by=1),noaa_i$date)
+    
+    daymet_noaa_sw = rep(NA, length(time_daymet_noaa))
+    daymet_noaa_sw[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$srad..W.m.2.
+    daymet_noaa_sw[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$sw
+    
+    daymet_noaa_tmax = rep(NA, length(time_daymet_noaa))
+    daymet_noaa_tmax[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$tmax..deg.c.
+    daymet_noaa_tmax[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$tmax - 273.15
+    
+    daymet_noaa_tmin = rep(NA, length(time_daymet_noaa))
+    daymet_noaa_tmin[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$tmin..deg.c.
+    daymet_noaa_tmin[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$tmin - 273.15
+    
+    daymet_noaa_prcp = rep(NA, length(time_daymet_noaa))
+    daymet_noaa_prcp[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$prcp..mm.day.
+    daymet_noaa_prcp[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$prcp
+    
+    temp[[i]] = data.frame(time_daymet_noaa, daymet_noaa_sw, daymet_noaa_tmax, daymet_noaa_tmin, daymet_noaa_prcp)
+    names(temp[[i]]) = c("date","sw","tmax","tmin","prcp")
+    names(temp)[i] = names(foo0)[i]
+  }
+  return(temp)
+}
+
+covariates = stitch_daymet_noaa(daymet,noaa)
+
+# Align daily target data and shortwave radiation covariate
+align_target_covariates = function(target, covariates) {
+  # This function is used to unify the time labels for two datasets,
+  # assuming time scales of the two are same and their time periods
+  # do not have breakpoints. NA's are assigned when one of the 
+  # datasets does not have a time period in the other.
+
+  output = list()
+  
+  for (i in 1:length(covariates)) {
+    siteID = substr(names(covariates)[i], start=1, stop=regexpr(".",names(covariates)[i],fixed=T)-1)
+    ensemble = substr(names(covariates)[i], start=regexpr(".",names(covariates)[i],fixed=T)+1, stop=nchar(names(covariates)[i]))
+    date_covariates_i = covariates[[i]]$date
+    date_target_i = target[[siteID]]$time
+    T1 = as.Date("2017-01-01") # start date of covariates data
+    T2 = as.Date("2017-02-01") # start date of target data
+    T3 = date_target_i[length(date_target_i)] # end date of target data
+    T4 = date_covariates_i[length(date_covariates_i)] # end date of covariate data
+    dT1T2 = as.numeric(T2 - T1)
+    if (T4 > T3) {
+      date = as.character.Date(date_covariates_i)
+      dT3T4 = as.numeric(T4 - T3)
+      covariate.sw = covariates[[i]]$sw
+      covariate.tmax = covariates[[i]]$tmax
+      covariate.tmin = covariates[[i]]$tmin
+      covariate.prcp = covariates[[i]]$prcp
+      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee,rep(NA,dT3T4))
+      target.le = c(rep(NA,dT1T2),target[[siteID]]$le,rep(NA,dT3T4))
+      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc,rep(NA,dT3T4))
+      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd,rep(NA,dT3T4))
+    }
+    else if (T3 > T4) {
+      dT3T4 = as.numeric(T3 - T4)
+      date = as.character.Date(seq(from=T1,to=T3,by=1))
+      covariate.sw = c(covariates[[i]]$sw,rep(NA,dT3T4))
+      covariate.tmax = c(covariates[[i]]$tmax,rep(NA,dT3T4))
+      covariate.tmin = c(covariates[[i]]$tmin,rep(NA,dT3T4))
+      covariate.prcp = c(covariates[[i]]$prcp,rep(NA,dT3T4))
+      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee)
+      target.le = c(rep(NA,dT1T2),target[[siteID]]$le)
+      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc)
+      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd)
+    }
+    else if (T3 == T4) {
+      date = as.character.Date(date_covariates_i)
+      covariate.sw = covariates[[i]]$sw
+      covariate.tmax = covariates[[i]]$tmax
+      covariate.tmin = covariates[[i]]$tmin
+      covariate.prcp = covariates[[i]]$prcp
+      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee)
+      target.le = c(rep(NA,dT1T2),target[[siteID]]$le)
+      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc)
+      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd)
+    }
+    output[[i]] = data.frame(date, siteID, ensemble, covariate.sw, covariate.tmax, covariate.tmin, covariate.prcp, target.nee, target.le, target.vswc, target.vswc_sd)
+    names(output[[i]]) = c("date", "siteID", "ensemble", "covariate.sw", "covariate.tmax", "covariate.tmin", "covariate.prcp", "target.nee", "target.le", "target.vswc", "target.vswc_sd")
+    names(output)[i] = names(covariates)[i]
+  }
+  
+  return(output)
+}
+tc = align_target_covariates(target,covariates)
+```
+
+```{r}
+# Forecast model
+neeForecast = "
+model{
+  #### Data Model: NEE
+  for(t in 1:n){
+    y[t] ~ dnorm(x[t],tau_obs_y)
+  }
+  
+  #### Process Model
+  for(t in 2:n){
+    mu[t] <- rho*x[t-1] + eta*z[t]
+    x[t]~dnorm(mu[t],tau_add_x)
+    
+    z[t]~dnorm(z[t-1],tau_add_z)
+  }
+  #### Priors
+  x[1] ~ dnorm(x_ic,tau_ic)
+  tau_obs_y ~ dgamma(a_obs,r_obs)
+  tau_add_x ~ dgamma(a_add_x,r_add_x)
+  tau_add_z ~ dgamma(a_add_z,r_add_z)
+  eta ~ dgamma(.5,.5)
+  rho ~ dgamma(1,1)
+}
+"
+```
+
+```{r}
+# Initial conditions, numbers assigned arbitrarily, just for running
+
+data = list()
+for (i in 1:length(tc)) {
+  data[[i]] = list(y=tc[[i]]$target.nee, # NEE monitoring, from target data
+              z=tc[[i]]$covariate.sw, # combination of SW flux monitoring and ensemble forcasts
+              n=length(tc[[i]]$date),
+              x_ic=0,
+              tau_ic=0.5,
+              a_obs=0.01,
+              r_obs=0.01,
+              a_add_x=0.01,
+              r_add_x=0.01,
+              a_add_z=0.01,
+              r_add_z=0.01)
+  names(data)[i] = names(tc)[i]
+}
+# Set inits
+init = list()
+nchain = 3
+for (i in 1:length(tc)) {
+  y = na.omit(tc[[i]]$target.nee)
+  init[[i]] = list()
+  for (j in 1:nchain) {
+    y.samp = sample(y,length(y),replace=TRUE)
+    init[[i]][[j]] = list(tau_obs_y=5/var(y.samp),tau_add_x=1/var(diff(y.samp)),tau_add_z=1/var(diff(y.samp)),eta=1,rho=1)
+  }
+  names(init)[i] = names(tc)[i]
+}
+```
+
+```{r}
+# Run forecasts. Here I only tested model for BART.0 (siteID=BART,ensemble=0). To run more models, change the for loop cycle from 1 to 1:124.
+j.model = list()
+for (i in 1) { 
+  j.model[[i]] = jags.model (file = textConnection(neeForecast),
+                             data = data[[i]],
+                             inits= init[[i]],
+                             n.chains=nchain) 
+}
+# MCMC diagnostics & Burn-in tests
+jags.out = list()
+for (i in 1) {
+  jags.out[[i]] = coda.samples (model = j.model[[i]],
+                                variable.names = c("tau_obs_y", 
+                                                   "tau_add_x", 
+                                                   "tau_add_z",
+                                                   "eta",
+                                                   "rho"),
+                                n.iter=5000)
+  plot(jags.out[[i]])
+}
+```
+
+```{r}
+# Plot to determine burn-in
+bgr = list()
+for (i in 1) {
+  gelman.diag(jags.out[[i]])
+  bgr[[i]] = gelman.plot(jags.out[[i]])
+
+}
+# DOES NOT SEEM TO CONVERGE AT THIS TIME. 
+```
+
+```{r}
+# Plot the forecast time-series with uncertainty partitioning
+
+```
+
+
+
+
+
+
+

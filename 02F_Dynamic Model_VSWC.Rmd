@@ -1,5 +1,5 @@
 ---
-title: "02C_HistoricalFitting_VSWC"
+title: "Downloading Daymet Precip"
 author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
 date: "3/25/2021"
 output: html_document
@@ -15,6 +15,7 @@ library(readr)
 library(rjags)
 library(daymetr)
 library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
@@ -74,20 +75,120 @@ vswc_SRER = Target_30min_SRER$vswc
 ```
 
 ```{r}
-RandomWalk = "
+
+#BART
+
+daymet_BART <- daymetr::download_daymet(site = "BART",
+                                        lat = 44.2,
+                                        lon = -71.9,
+                                        start = 2019,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_BART$date <- as.Date(paste(daymet_BART$year,daymet_BART$yday,sep = "-"),"%Y-%j")
+
+Precip_BART<-daymet_BART[,c(1,2,4)]              
+SoilMoisture_BART_all <- as.data.frame(Target_daily_BART[,c(1,2,5)])
+Soil_Moisture_BART<- SoilMoisture_BART_all[700:1064,]
+
+data_BART_all<- cbind(Soil_Moisture_BART, Precip_BART)
+
+#KONZ 
+
+daymet_KONZ <- daymetr::download_daymet(site = "KONZ",
+                                        lat = 29.7,
+                                        lon = -82.0,
+                                        start = 2018,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_KONZ$date <- as.Date(paste(daymet_KONZ$year,daymet_KONZ$yday,sep = "-"),"%Y-%j")
+
+Precip_KONZ<-daymet_KONZ[,c(1,2,4)]              
+SoilMoisture_KONZ_all <- as.data.frame(Target_daily_KONZ[,c(1,2,5)])
+Soil_Moisture_KONZ<- SoilMoisture_KONZ_all[335:1064,]
+
+data_KONZ_all<- cbind(Soil_Moisture_KONZ, Precip_KONZ)
+
+
+#OSBS
+
+daymet_OSBS<- daymetr::download_daymet(site = "OSBS",
+                                        lat = 39.1,
+                                        lon = -96.6,
+                                        start = 2019,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_OSBS$date <- as.Date(paste(daymet_OSBS$year,daymet_OSBS$yday,sep = "-"),"%Y-%j")
+
+Precip_OSBS<-daymet_OSBS[,c(1,2,4)]              
+SoilMoisture_OSBS_all <- as.data.frame(Target_daily_OSBS[,c(1,2,5)])
+Soil_Moisture_OSBS<- SoilMoisture_OSBS_all[335:1064,]
+
+data_OSBS_all<- cbind(Soil_Moisture_OSBS, Precip_OSBS)
+
+#SRER
+
+daymet_SRER<- daymetr::download_daymet(site = "SRER",
+                                        lat = 31.8,
+                                        lon = -110.8,
+                                        start = 2019,
+                                        end = 2020,
+                                        internal = TRUE)$data
+daymet_SRER$date <- as.Date(paste(daymet_SRER$year,daymet_SRER$yday,sep = "-"),"%Y-%j")
+
+Precip_SRER<-daymet_SRER[,c(1,2,4)]              
+SoilMoisture_SRER_all <- as.data.frame(Target_daily_SRER[,c(1,2,5)])
+Soil_Moisture_SRER<- SoilMoisture_SRER_all[700:1064,]
+
+data_SRER_all<- cbind(Soil_Moisture_SRER, Precip_SRER)
+
+#BART
+vswc_BART = data_BART_all$vswc
+precip_BART=data_BART_all$prcp..mm.day.
+
+#KONZ
+vswc_KONZ=data_KONZ_all$vswc
+precip_KONZ = data_KONZ_all$prcp..mm.day.
+
+#OSBS
+
+vswc_OSBS=data_OSBS_all$vswc
+precip_OSBS = data_OSBS_all$prcp..mm.day.
+
+#SRER
+vswc_SRER=data_SRER_all$vswc
+precip_SRER = data_SRER_all$prcp..mm.day.
+
+
+
+```
+
+```{r}
+PrecipFused = "
 model{
   #### Data Model
   for(t in 1:n){
     y[t] ~ dnorm(x[t],tau_obs)
   }
+  
+  #### Data Model: precip
+ for(t in 2:n){
+    z[t] ~ dnorm(z[t-1],tau_precip)
+  }
   #### Process Model
   for(t in 2:n){
-    x[t]~dnorm(x[t-1],tau_add)
+    Dnew[t]=rho*x[t-1] + PrecipSens*z[t]
+  
+    x[t]~dnorm(Dnew[t],tau_add)
   }
   #### Priors
   x[1] ~ dnorm(x_ic,tau_ic)
+  z[1] ~ dnorm(z_ic_precip,tau_ic_precip)
   tau_obs ~ dgamma(a_obs,r_obs)
   tau_add ~ dgamma(a_add,r_add)
+  tau_precip ~ dgamma(.5,.5)
+  PrecipSens ~ dgamma(.5,.5)
+  rho ~ dgamma(1,1)
+  #rho ~ dbeta(1,1)
 }
 "
 ```
@@ -96,132 +197,161 @@ model{
 #Set Initial Conditions 
 x_ic_vswc = 0
 tau_ic_vswc = 10 
+z_ic_precip = 0
+tau_ic_precip =10
 
-data_vswc_BART <- list(y=vswc_BART,n=length(vswc_BART),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_vswc_KONZ <- list(y=vswc_KONZ,n=length(vswc_KONZ),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_vswc_OSBS <- list(y=vswc_OSBS,n=length(vswc_OSBS),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
-data_vswc_SRER <- list(y=vswc_SRER,n=length(vswc_SRER),x_ic= x_ic_vswc,tau_ic=tau_ic_vswc, a_obs=1,r_obs=1,a_add=1,r_add=1)
+data_BART<-list(y=vswc_BART,z=precip_BART,n=length(vswc_BART),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=.01,r_obs=.01,a_add=.01,r_add=.01 ) 
+
+data_KONZ<-list(y=vswc_KONZ,z=precip_KONZ,n=length(vswc_KONZ),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=.01,r_obs=.01,a_add=.01,r_add=.01 ) 
+
+data_OSBS<-list(y=vswc_OSBS,z=precip_OSBS,n=length(vswc_OSBS),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=.01,r_obs=.01,a_add=.01,r_add=.01 ) 
+
+data_SRER<-list(y=vswc_SRER,z=precip_SRER,n=length(vswc_SRER),x_ic=x_ic_vswc,tau_ic=tau_ic_vswc,z_ic_precip=z_ic_precip,tau_ic_precip=tau_ic_precip, a_obs=.01,r_obs=.01,a_add=.01,r_add=.01 ) 
 ```
 
 ```{r}
 #Set inits 
 
+#BART
 #vswc
 nchain = 3
 init_vswc_BART <- list()
-init_vswc_KONZ <- list()
-init_vswc_OSBS <- list()
-init_vswc_SRER <- list()
 y_BART = vswc_BART 
-y_KONZ = vswc_KONZ
-y_OSBS = vswc_OSBS
-y_SRER = vswc_SRER
 y_BART = na.omit(y_BART)
-y_KONZ = na.omit(y_KONZ)
-y_OSBS = na.omit(y_OSBS)
-y_SRER = na.omit(y_SRER)
+
 for(i in 1:nchain){
   y.samp = sample(y_BART,length(y_BART),replace=TRUE)
-  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  init_vswc_BART[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp),tau_precip=.5,PrecipSens=1,rho=1)
+}
+
+#KONZ
+nchain = 3
+init_vswc_KONZ <- list()
+y_KONZ = vswc_KONZ 
+y_KONZ = na.omit(y_KONZ)
+
+for(i in 1:nchain){
   y.samp = sample(y_KONZ,length(y_KONZ),replace=TRUE)
-  init_vswc_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  init_vswc_KONZ[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp),tau_precip=.5,PrecipSens=1,rho=1)
+}
+
+#OSBS
+nchain = 3
+init_vswc_OSBS <- list()
+y_OSBS = vswc_OSBS 
+y_OSBS = na.omit(y_OSBS)
+
+for(i in 1:nchain){
   y.samp = sample(y_OSBS,length(y_OSBS),replace=TRUE)
-  init_vswc_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  init_vswc_OSBS[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp),tau_precip=.5,PrecipSens=1,rho=1)
+}
+
+#SRER
+ nchain = 3
+init_vswc_SRER <- list()
+y_SRER = vswc_SRER
+y_SRER = na.omit(y_SRER)
+
+for(i in 1:nchain){
   y.samp = sample(y_SRER,length(y_SRER),replace=TRUE)
-  init_vswc_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp))
+  init_vswc_SRER[[i]] <- list(tau_add=1/var(diff(y.samp)),tau_obs=5/var(y.samp),tau_precip=.5,PrecipSens=1,rho=1)
 }
 ```
 
 
 ```{r}
-#JAGS Model Runs
+#BART Model Runs
 
-j.model_vswc_BART   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc_BART,
+j.model_vswc_BART   <- jags.model (file = textConnection(PrecipFused),
+                             data = data_BART,
                              inits = init_vswc_BART,
                              n.chains = 3)
-j.model_vswc_KONZ   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc_KONZ,
+
+#KONZ
+j.model_vswc_KONZ   <- jags.model (file = textConnection(PrecipFused),
+                             data = data_KONZ,
                              inits = init_vswc_KONZ,
                              n.chains = 3)
-j.model_vswc_OSBS   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc_OSBS,
+#OSBS
+j.model_vswc_OSBS  <- jags.model (file = textConnection(PrecipFused),
+                             data = data_OSBS,
                              inits = init_vswc_OSBS,
                              n.chains = 3)
-j.model_vswc_SRER   <- jags.model (file = textConnection(RandomWalk),
-                             data = data_vswc_SRER,
+
+#SRER
+j.model_vswc_SRER  <- jags.model (file = textConnection(PrecipFused),
+                             data = data_SRER,
                              inits = init_vswc_SRER,
                              n.chains = 3)
-
 ```
 
 ```{r}
 #MCMC diagnostics & Burn-in test
 jags.out_vswc_BART <- coda.samples (model = j.model_vswc_BART,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                            variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 20000)
 jags.out_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                            variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 20000)
 jags.out_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                            variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 20000)
 jags.out_vswc_SRER <- coda.samples (model = j.model_vswc_SRER,
-                            variable.names = c("tau_add","tau_obs"),
-                                n.iter = 5000)
+                            variable.names = c("tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 20000)
 
-newFilename <- sprintf("%s.jpg","VSWC_BART_traceplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_BART_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 plot(jags.out_vswc_BART)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_KONZ_traceplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_KONZ_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 plot(jags.out_vswc_KONZ)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_OSBS_traceplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_OSBS_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 plot(jags.out_vswc_OSBS)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_SRER_traceplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_SRER_traceplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 plot(jags.out_vswc_SRER)
-dev.off()
+#dev.off()
 ```
 
 ```{r}
 # MCMC Diagnostics - all sites accept
-newFilename <- sprintf("%s.jpg","VSWC_BART_gelmanplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_BART_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_BART <- gelman.plot(jags.out_vswc_BART)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_KONZ_gelmanplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_KONZ_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_KONZ <- gelman.plot(jags.out_vswc_KONZ)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_OSBS_gelmanplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_OSBS_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_OSBS <- gelman.plot(jags.out_vswc_OSBS)
-dev.off()
+#dev.off()
 
-newFilename <- sprintf("%s.jpg","VSWC_SRER_gelmanplot")
-newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-jpeg(file = newFilename)
+#newFilename <- sprintf("%s.jpg","VSWC_SRER_gelmanplot")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+#jpeg(file = newFilename)
 BGR_SRER <- gelman.plot(jags.out_vswc_SRER)
-dev.off()
+#dev.off()
 
-rm(BGR_BART, BGR_KONZ, BGR_OSBS, BGR_SRER)
+#rm(BGR_BART, BGR_KONZ, BGR_OSBS, BGR_SRER)
 
 gelman.diag(jags.out_vswc_BART)
 gelman.diag(jags.out_vswc_KONZ)
@@ -235,12 +365,37 @@ effectiveSize(jags.out_vswc_SRER)
 ```
 
 
+
+```{r}
+## remove burn-in and save MCMC output
+
+#BART
+jags.burn_vswc_BART   <- coda.samples (model = j.model_vswc_BART,
+                            variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 10000)
+#KONZ
+jags.burn_vswc_KONZ   <- coda.samples (model = j.model_vswc_KONZ,
+                            variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 10000)
+#OSBS
+jags.burn_vswc_OSBS   <- coda.samples (model = j.model_vswc_OSBS,
+                            variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 10000)
+#SRER
+jags.burn_vswc_SRER   <- coda.samples (model = j.model_vswc_SRER,
+                            variable.names = c("x","tau_add","tau_obs","PrecipSens","rho"),
+                                n.iter = 10000)
+
+
+```
+
+
 ```{r}
 rm(jags.out_vswc_BART, jags.out_vswc_KONZ, jags.out_vswc_OSBS, jags.out_vswc_SRER)
 
 # Generate 3000 post-burn-in samples and save output
 
-newFilename <- sprintf("%s.Rdata", "VSWC_BART_JAGS")
+newFilename <- sprintf("%s.Rdata", "VSWC_BART_JAGS2")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_vswc_BART <- coda.samples (model = j.model_vswc_BART,
                             variable.names = c("x","tau_add","tau_obs"),
@@ -249,7 +404,7 @@ jags.burn_vswc_BART <- coda.samples (model = j.model_vswc_BART,
 save(jags.burn_vswc_BART, file = newFilename)
 rm(jags.burn_vswc_BART)
 
-newFilename <- sprintf("%s.Rdata", "VSWC_KONZ_JAGS")
+newFilename <- sprintf("%s.Rdata", "VSWC_KONZ_JAGS2")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
                             variable.names = c("x","tau_add","tau_obs"),
@@ -258,7 +413,7 @@ jags.burn_vswc_KONZ <- coda.samples (model = j.model_vswc_KONZ,
 save(jags.burn_vswc_KONZ, file = newFilename)
 rm(jags.burn_vswc_KONZ)
 
-newFilename <- sprintf("%s.Rdata", "VSWC_OSBS_JAGS")
+newFilename <- sprintf("%s.Rdata", "VSWC_OSBS_JAGS2")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
                             variable.names = c("x","tau_add","tau_obs"),
@@ -266,7 +421,7 @@ jags.burn_vswc_OSBS <- coda.samples (model = j.model_vswc_OSBS,
 save(jags.burn_vswc_OSBS, file = newFilename)
 rm(jags.burn_vswc_OSBS)
 
-newFilename <- sprintf("%s.Rdata", "VSWC_SRER_JAGS")
+newFilename <- sprintf("%s.Rdata", "VSWC_SRER_JAGS2")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 jags.burn_vswc_SRER <- coda.samples (model = j.model_vswc_SRER,
                             variable.names = c("x","tau_add","tau_obs"),
@@ -277,7 +432,6 @@ rm(jags.burn_vswc_SRER)
 ```
 
 
-
 ```{r}
 ## Plot the model and data time series with interval estimates
 
@@ -285,10 +439,10 @@ rm(jags.burn_vswc_SRER)
 # load the data file
 newFilename <- sprintf("%s.jpg","VSWC_BART_modelplot")
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-loadFilename <- sprintf("%s.Rdata","VSWC_BART_JAGS")
+loadFilename <- sprintf("%s.Rdata","VSWC_BART_JAGS2")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
-time = time_BART
+time = data_BART_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_BART)
 rm(jags.burn_vswc_BART)
@@ -310,10 +464,10 @@ rm(out)
 #for KONZ
 newFilename <- sprintf("%s.jpg","VSWC_KONZ_modelplot")
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-loadFilename <- sprintf("%s.Rdata","VSWC_KONZ_JAGS")
+loadFilename <- sprintf("%s.Rdata","VSWC_KONZ_JAGS2")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
-time = time_KONZ
+time = data_KONZ_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_KONZ)
 rm(jags.burn_vswc_KONZ)
@@ -335,10 +489,10 @@ rm(out)
 #for OSBS
 newFilename <- sprintf("%s.jpg","VSWC_OSBS_modelplot")
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-loadFilename <- sprintf("%s.Rdata","VSWC_OSBS_JAGS")
+loadFilename <- sprintf("%s.Rdata","VSWC_OSBS_JAGS2")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
-time = time_OSBS
+time = data_OSBS_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_OSBS)
 rm(jags.burn_vswc_OSBS)
@@ -360,10 +514,10 @@ rm(out)
 #for SRER
 newFilename <- sprintf("%s.jpg","VSWC_SRER_modelplot")
 newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
-loadFilename <- sprintf("%s.Rdata","VSWC_SRER_JAGS")
+loadFilename <- sprintf("%s.Rdata","VSWC_SRER_JAGS2")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
-time = time_SRER
+time = data_SRER_all$time
 time.rng = c(1,length(time)) ## adjust to zoom in and out
 out <- as.matrix(jags.burn_vswc_SRER)
 rm(jags.burn_vswc_SRER)
@@ -382,3 +536,5 @@ dev.off()
 rm(out)
 
 ```
+
+

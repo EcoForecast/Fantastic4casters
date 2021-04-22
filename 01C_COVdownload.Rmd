@@ -1,0 +1,88 @@
+---
+title: "01C_COVdownload"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "4/12/2021"
+output: html_document
+---
+
+
+```{r}
+# install neonUtilities install
+#install.packages("neonUtilities") 
+#install.packages('BiocManager')
+#install,packages("raster")
+#BiocManager::install('rhdf5')
+
+options(stringsAsFactors = F)
+
+# load neonUtilities
+library(neonUtilities)
+library(raster)
+```
+
+```{r}
+basePath <- getwd()
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+```
+
+
+```{r}
+
+Tmp <- loadByProduct(dpID="DP1.00002.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+
+newFilename <- sprintf("%s.Rdata","Air_Temperature")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(Tmp, file = newFilename)
+
+rm(Tmp)
+```
+
+```{r}
+precip <- loadByProduct(dpID="DP1.00006.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+
+newFilename <- sprintf("%s.Rdata","Precipitation")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(precip, file = newFilename)
+rm(precip)
+```
+
+```{r}
+swlw <- loadByProduct(dpID="DP1.00023.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+
+newFilename <- sprintf("%s.Rdata","Radiance")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(swlw, file = newFilename)
+rm(swlw)
+```
+
+```{r}
+wind <- loadByProduct(dpID="DP1.00001.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+
+newFilename <- sprintf("%s.Rdata","Wind")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(wind, file = newFilename)
+rm(wind)
+```
+
+```{r}
+hum <- loadByProduct(dpID="DP1.00098.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+newFilename <- sprintf("%s.Rdata","Humidity")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(hum, file = newFilename)
+rm(hum)
+```
+
+```{r}
+baro <- loadByProduct(dpID="DP1.00004.001", site=c("BART","KONZ","OSBS","SRER"),
+              startdate="2017-01", enddate="2021-03", check.size=F)
+newFilename <- sprintf("%s.Rdata","Pressure")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(baro, file = newFilename)
+rm(baro)
+```
