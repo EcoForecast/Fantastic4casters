@@ -21,3 +21,135 @@ library(ecoforecastR)
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
+```{r}
+# If you need run data download
+###source('01A_Targetdownload.R')
+
+# definition for PATH
+basePath <- getwd() 
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+#Precipitation data from 01C
+loadFilename <- sprintf("%s.Rdata","Precipitation")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+precip_2 = precip[["PRIPRE_30min"]]
+rm(precip)
+precip = precip_2
+rm(precip_2)
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+```
+
+```{r}
+##subset
+Target_30min_BART = subset(Target_30min, siteID == 'BART' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+
+time_BART = Target_30min_BART$time
+time_KONZ = Target_30min_KONZ$time
+time_OSBS = Target_30min_OSBS$time
+time_SRER = Target_30min_SRER$time
+
+vswc_BART = Target_30min_BART$vswc
+vswc_KONZ = Target_30min_KONZ$vswc
+vswc_OSBS = Target_30min_OSBS$vswc
+vswc_SRER = Target_30min_SRER$vswc
+
+precip_KONZ = subset(precip, siteID == 'KONZ' & verticalPosition == '000' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+data_03C = data.frame(time = time_KONZ, VSWC = vswc_KONZ)
+data_03C$ppb = precip_KONZ$priPrecipBulk[match(data_03C$time,precip_KONZ$startDateTime)]
+data_03C$ppnp = precip_KONZ$priPrecipNumPts[match(data_03C$time,precip_KONZ$startDateTime)]
+data_03C$ppeu = precip_KONZ$priPrecipExpUncert[match(data_03C$time,precip_KONZ$startDateTime)]
+```
+
+
+
+```{r}
+source("00A_fit_dlm_revised.R")
+```
+
+```{r}
+
+## fit the model ## It is quite time-consuming process (about 30~60 min.)
+vswc_dynamic.out <- fit_dlm(model=list(obs="VSWC",fixed="~ 1 + X + ppb + ppnp",n.iter=10000,n.thin=10),data_03C)
+
+```
+
+```{r}
+# burn-in test (covergence : OK / Gelman plot : >260 OK)
+params <- vswc_dynamic.out$params
+plot(params)
+BGR_params <- gelman.plot(params)
+BGR_params$shrink > 1.1
+gelman.diag(params)
+```
+
+```{r}
+# burn-in removal
+params <- window(vswc_dynamic.out$params,start=260)
+predict <- window(vswc_dynamic.out$predict,start=260)
+
+summary(params)
+cor(as.matrix(params))
+pairs(as.matrix(params))
+time = data_03C$time
+time.rng = c(1,length(time))
+
+newFilename <- sprintf("%s.Rdata","VSWC_KONZ_DLM")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(params, predict, file = newFilename)
+
+rm(precip,vswc_dynamic.out,params,predict)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates
+
+#for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","VSWC_KONZ_modelplot_DLM")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","VSWC_KONZ_DLM")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(predict)
+rm(params, predict)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(vswc_KONZ,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le_BART,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
+
+```
