@@ -9,7 +9,7 @@ library(readr)
 basePath <- getwd()
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
-base_dir <- paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr")
+base_dir <- paste0(basePath,"/../SemesterProjectdrivers/noaa/NOAAGEFS_1hr")
 site_names <- c("BART","KONZ","OSBS","SRER")
 cycle_names <- "00"
 
@@ -93,7 +93,7 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 # Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
 
 for (i in 1:4){
-  download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"drivers/"))
+  download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"SemesterProjectdrivers/"))
 }
 
 # data conversion from cdf to csv, and plot data for ensemble 0 case as an example

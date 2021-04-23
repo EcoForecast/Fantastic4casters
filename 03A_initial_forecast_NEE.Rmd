@@ -11,13 +11,15 @@ library(tidyverse)
 library(readr)
 library(rjags)
 library(daymetr)
-library(ecoforecastR)
+#library(ecoforecastR)
+source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
 # PATH definitions
-basePath <- "C:/Users/zhenp/Documents/test"
+basePath <- getwd() 
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
 
