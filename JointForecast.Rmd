@@ -220,10 +220,14 @@ j.model_EC   <- jags.model (file = textConnection(JointDLM),
                             inits = init_BART,
                             n.chains = 3)
 
+j.model_BART <-j.model_EC
 ```
 
 ```{r}
-names = c("tau_nee",
+names = c("NEE",
+  "LE",
+  "VSWC",
+  "tau_nee",
   "tau_le", 
   "tau_sw",
   "tau_lw", 
@@ -253,10 +257,10 @@ names = c("tau_nee",
 #MCMC diagnostics & Burn-in test
 jags.out_BART <- coda.samples (model = j.model_EC,
                             variable.names = names,
-                                n.iter = 1000)
+                                n.iter = 5000, thin=10)
 
 
-plot(jags.out_BART)
+#plot(jags.out_BART)
 
 
 ```
@@ -268,7 +272,7 @@ plot(jags.out_BART)
 time1 = time_BART
 time.rng = c(1,length(time1)) ## adjust to zoom in and out
 out <- as.matrix(jags.out_BART)
-LE.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the letter x
+LE.cols <- grep("^LE",colnames(out)) ## grab all columns that start with LE
 ci2 <- apply(out[,LE.cols],2,quantile,c(0.025,0.5,0.975)) ## 
 plot(time1,ci2[2,],type='n',ylim=range(LE_BART,na.rm=TRUE),ylab="BART LE",xlim=time1[time.rng])
 ## adjust x-axis label to be monthly if zoomed
@@ -276,7 +280,7 @@ if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time1[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
 ciEnvelope(time1,ci2[1,],ci2[3,],col=col.alpha("lightBlue",0.75))
-points(time,LE_BART,pch="+",cex=0.5)
+points(time1,LE_BART,pch="+",cex=0.5)
 
 
 
