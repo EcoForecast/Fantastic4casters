@@ -272,7 +272,52 @@ rm(jags.burn_le_OSBS)
 
 newFilename <- sprintf("%s.Rdata", "LE_SRER_JAGS")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+<<<<<<< HEAD
+save(jags.burn_le_SRER, file = newFilename)
+
+```
+
+```{r}
+#BART
+burnin = 11400
+jags.burn_le_BART <- window(jags.out_le_BART,start=burnin)  ## remove burn-in
+plot(jags.burn_le_BART )
+BGR_le_BART <- gelman.diag(jags.burn_le_BART )
+effectiveSize(jags.burn_le_BART)
+
+#KONZ
+burnin = 11400
+jags.burn_le_KONZ <- window(jags.out_le_KONZ,start=burnin)  ## remove burn-in
+plot(jags.burn_le_KONZ )
+BGR_le_KONZ <- gelman.diag(jags.burn_le_KONZ )
+effectiveSize(jags.burn_le_KONZ)
+
+#OSBS
+burnin = 11400
+jags.burn_le_OSBS <- window(jags.out_le_OSBS,start=burnin)  ## remove burn-in
+plot(jags.burn_le_OSBS )
+BGR_le_OSBS <- gelman.diag(jags.burn_le_OSBS )
+effectiveSize(jags.burn_le_OSBS)
+
+
+#SRER
+burnin = 11400
+jags.burn_le_SRER <- window(jags.out_le_SRER,start=burnin)  ## remove burn-in
+plot(jags.burn_le_SRER)
+BGR_le_OSBS <- gelman.diag(jags.burn_le_SRER )
+effectiveSize(jags.burn_le_SRER)
+
+
+```
+
+```{r}
+## remove burn-in and save MCMC output
+
+jags.out_le_BART   <- jags.burn_le_BART
+jags.out_le_KONZ   <- coda.samples (model = j.model_le_KONZ,
+=======
 jags.burn_le_SRER <- coda.samples (model = j.model_le_SRER,
+>>>>>>> 22e472ec29caa622543bdb18dda50054fff7c60d
                             variable.names = c("x","tau_add","tau_obs"),
                                 n.iter = 10000, thin = 10)
 save(jags.burn_le_SRER, file = newFilename)
@@ -302,7 +347,7 @@ plot(time,ci[2,],type='n',ylim=range(le_BART,na.rm=TRUE),ylab="BART LE",xlim=tim
 if(diff(time.rng) < 100){
   axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
 }
-ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
 points(time,le_BART,pch="+",cex=0.5)
 dev.off()
 
