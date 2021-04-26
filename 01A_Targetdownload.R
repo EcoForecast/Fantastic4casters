@@ -3,7 +3,7 @@
 # setting the terrestral data script to run at 5:00 AM daily
 
 
-basePath <- getwd()
+basePath <- "C:/Users/zhenp/Documents/test"
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
 site_names <- c("BART","KONZ","OSBS","SRER")
