@@ -1,152 +1,162 @@
 ---
 title: "03A_initial_forecast_NEE"
 author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
-date: "3/27/2021"
+date: "4/24/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-# libraries
+```{r}
+## Package check and load
+
+#install.packages("tidyverse")
+#install.packages("readr")
 library(tidyverse)
 library(readr)
 library(rjags)
+library(rnoaa)
 library(daymetr)
+
 library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
 
 ```{r}
+
+# If you need run data download
+###source('01A_Targetdownload.R')
+
 # PATH definitions
-basePath <- "C:/Users/zhenp/Documents/test"
+basePath <- getwd() 
+
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
 
-# Define site names
-site_names <- c("BART","KONZ","OSBS","SRER")
-
-# Load historical time-series
-daymet_BART <- daymetr::download_daymet(site = "BART",
-                                        lat = 44.2,
-                                        lon = -71.9,
-                                        start = 2017,
-                                        end = 2020,
-                                        internal = TRUE)$data
-daymet_BART$date = as.Date(daymet_BART[,"yday"], origin=as.Date(paste0(daymet_BART[,"year"],"-01-01"))-1)
-
-daymet_KONZ <- daymetr::download_daymet(site = "KONZ",
-                                        lat = 29.7,
-                                        lon = -82.0,
-                                        start = 2017,
-                                        end = 2020,
-                                        internal = TRUE)$data
-daymet_KONZ$date = as.Date(daymet_KONZ[,"yday"], origin=as.Date(paste0(daymet_KONZ[,"year"],"-01-01"))-1)
-
-daymet_OSBS<- daymetr::download_daymet(site = "OSBS",
-                                        lat = 39.1,
-                                        lon = -96.6,
-                                        start = 2017,
-                                        end = 2020,
-                                        internal = TRUE)$data
-daymet_OSBS$date = as.Date(daymet_OSBS[,"yday"], origin=as.Date(paste0(daymet_OSBS[,"year"],"-01-01"))-1)
-
-daymet_SRER<- daymetr::download_daymet(site = "SRER",
-                                        lat = 31.8,
-                                        lon = -110.8,
-                                        start = 2017,
-                                        end = 2020,
-                                        internal = TRUE)$data
-daymet_SRER$date = as.Date(daymet_SRER[,"yday"], origin=as.Date(paste0(daymet_SRER[,"year"],"-01-01"))-1)
-
-daymet = list()
-daymet[[1]] = daymet_BART[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
-daymet[[2]] = daymet_KONZ[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
-daymet[[3]] = daymet_OSBS[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
-daymet[[4]] = daymet_SRER[,c("date","prcp..mm.day.","srad..W.m.2.","tmax..deg.c.","tmin..deg.c.")]
-names(daymet) = site_names
-#rm("daymet_BART","daymet_KONZ","daymet_OSBS","daymet_SRER")
-
-# Load daily target data
-loadFilename <- sprintf("%s.Rdata","Target_daily")
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
 loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
 load(file = loadFilename)
 
-target = list()
-target[[1]] = subset(Target_daily, siteID==site_names[1])
-target[[2]] = subset(Target_daily, siteID==site_names[2])
-target[[3]] = subset(Target_daily, siteID==site_names[3])
-target[[4]] = subset(Target_daily, siteID==site_names[4])
-names(target) = site_names
-#rm("Target_daily")
+loadFilename <- sprintf("%s.Rdata","Radiance")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
 
+swlw_2 = swlw[["SLRNR_30min"]]
+rm(swlw)
+swlw = swlw_2
+rm(swlw_2)
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+```
+
+```{r}
+## subset
+Target_30min_BART = subset(Target_30min, siteID == 'BART' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+
+time_BART = Target_30min_BART$time
+time_KONZ = Target_30min_KONZ$time
+time_OSBS = Target_30min_OSBS$time
+time_SRER = Target_30min_SRER$time
+
+nee_BART = Target_30min_BART$nee
+nee_KONZ = Target_30min_KONZ$nee
+nee_OSBS = Target_30min_OSBS$nee
+nee_SRER = Target_30min_SRER$nee
+
+swlw_BART = subset(swlw, siteID == 'BART' & verticalPosition == '060' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+data_03B = data.frame(time = time_BART, NEE = nee_BART)
+data_03B$insw = swlw_BART$inSWMean[match(data_03B$time,swlw_BART$startDateTime)]
+#data_03B$inlw = swlw_BART$inLWMean[match(data_03B$time,swlw_BART$startDateTime)]
+#data_03B$outlw = swlw_BART$outLWMean[match(data_03B$time,swlw_BART$startDateTime)]
+```
+
+```{r}
+source("00A_fit_dlm_revised.R")
+```
+
+```{r}
+
+## fit the model ## It is quite time-consuming process (about 30~60 min.)
+nee_dynamic.out <- fit_dlm(model=list(obs="NEE",fixed="~ 1 + X + insw",n.iter=10000,n.thin=10),data_03B)
+
+```
+
+```{r}
+# burn-in test (covergence : OK / Gelman plot : >600 OK)
+params <- nee_dynamic.out$params
+plot(params)
+BGR_params <- gelman.plot(params)
+BGR_params$shrink > 1.1
+gelman.diag(params)
+```
+
+```{r}
+# burn-in removal
+params <- window(nee_dynamic.out$params,start=260)
+predict <- window(nee_dynamic.out$predict,start=260)
+
+summary(params)
+cor(as.matrix(params))
+pairs(as.matrix(params))
+time = data_03B$time
+time.rng = c(1,length(time))
+
+newFilename <- sprintf("%s.Rdata","NEE_BART_DLM")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(params, predict, file = newFilename)
+
+rm(swlw,nee_dynamic.out,params,predict)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates
+
+#for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","NEE_BART_modelplot_DLM")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","NEE_BART_DLM")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+time = time_BART
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(predict)
+rm(params, predict)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(nee_BART,na.rm=TRUE),ylab="BART NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,nee_BART,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
+
+```
+
+```{r}
+#NOAA data load
 # Download NOAA climate forecasts (hourly) and downsample to daily scale
-download_noaa_files_s3 <- function(siteID, date, cycle="00", local_directory){
-  
-  Sys.setenv("AWS_DEFAULT_REGION" = "data",
-             "AWS_S3_ENDPOINT" = "ecoforecast.org")
-  
-  object <- aws.s3::get_bucket("drivers", prefix=paste0("noaa/NOAAGEFS_1hr/",siteID,"/",date,"/",cycle))
-  
-  for(i in 1:length(object)){
-    aws.s3::save_object(object[[i]], bucket = "drivers", file = file.path(local_directory, object[[i]]$Key))
-  }
-}
-noaa_gefs_read <- function(base_dir, date, cycle, sites){
-  
-  if(!(cycle %in% c("00","06","12","18"))){
-    stop("cycle not available cycles of 00, 06,12,18")
-  }
-  
-  cf_met_vars <- c("air_temperature",
-                   "surface_downwelling_shortwave_flux_in_air",
-                   "surface_downwelling_longwave_flux_in_air",
-                   "relative_humidity",
-                   "wind_speed",
-                   "precipitation_flux")
-  
-  combined_met <- NULL
-  
-  for(i in 1:length(sites)){
-    
-    forecast_dir <- file.path(base_dir, sites[i], lubridate::as_date(date),cycle)
-    
-    forecast_files <- list.files(forecast_dir, full.names = TRUE)
-    
-    if(length(forecast_files) == 0){
-      stop(paste0("no files in ", forecast_dir))
-    }
-    
-    nfiles <-   length(forecast_files)
-    
-    for(j in 1:nfiles){
-      
-      ens <- dplyr::last(unlist(stringr::str_split(basename(forecast_files[j]),"_")))
-      ens <- stringr::str_sub(ens,1,5)
-      noaa_met_nc <- ncdf4::nc_open(forecast_files[j])
-      noaa_met_time <- ncdf4::ncvar_get(noaa_met_nc, "time")
-      origin <- stringr::str_sub(ncdf4::ncatt_get(noaa_met_nc, "time")$units, 13, 28)
-      origin <- lubridate::ymd_hm(origin)
-      noaa_met_time <- origin + lubridate::hours(noaa_met_time)
-      noaa_met <- tibble::tibble(time = noaa_met_time)
-      
-      for(v in 1:length(cf_met_vars)){
-        noaa_met <- cbind(noaa_met, ncdf4::ncvar_get(noaa_met_nc, cf_met_vars[v]))
-      }
-      
-      ncdf4::nc_close(noaa_met_nc)
-      
-      names(noaa_met) <- c("time", cf_met_vars)
-      
-      noaa_met <- noaa_met %>% 
-        dplyr::mutate(siteID = sites[i],
-                      ensemble = as.numeric(stringr::str_sub(ens,4,5))) %>% 
-        dplyr::select("siteID","ensemble","time",all_of(cf_met_vars))
-      
-      combined_met <- rbind(combined_met, noaa_met)
-      
-    }
-  }
-  return(combined_met)
-}
+source("00B_NOAAconversion.R")
 
 for (S in site_names){
   download_noaa_files_s3(siteID = S, 
@@ -154,245 +164,199 @@ for (S in site_names){
                          cycle = "00", 
                          local_directory <- paste0(basePath,"/drivers/"))
 }
-foo = noaa_gefs_read(paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr"), "2021-03-01", "00", site_names)
+NOAA_Driver = noaa_gefs_read(paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr"), "2021-03-01", "00", "BART")
 
-# Downsample NOAA hourly ensemble weather forecast to daily scale
-downsample_noaa = function (foo) {
-   foo0 = list() # downsampled (daily) NOAA ensemble weather forecasts for the four sites
-   i = 1
-   for (S in site_names) { 
-     for(E in 0:30) { 
-       temp0 = subset(foo, ensemble==E & siteID==S)
-       temp0$time = as.Date(temp0$time, format="%Y-%m-%d")
-       temp_dates = unique(temp0$time)
-       temp1 = data.frame(matrix(nrow=0, ncol=5))
-       names(temp1) = c("date","sw","tmax","tmin","prcp")
-       for (j in 1:length(temp_dates)) {
-         temp1[j,"date"] = as.character.Date(temp_dates[j])
-         temp0_day = subset(temp0, time==temp_dates[j])
-         daylight_period = temp0_day$surface_downwelling_shortwave_flux_in_air > 0
-         daily_sw = mean(temp0_day$surface_downwelling_shortwave_flux_in_air[daylight_period]) # daylight-period shortwave radiation, same definition as daymet data
-         daily_tmax = max(temp0_day$air_temperature)
-         daily_tmin = min(temp0_day$air_temperature)
-         daily_prcp = sum(temp0_day$precipitation_flux*3600) # prcp flux kg/m2/s to prcp mm/h then add together
-         if (!is.nan(daily_sw)) {temp1[j,"sw"] = daily_sw} else {temp1[j,"sw"] = NA}
-         if (!is.nan(daily_tmax)) {temp1[j,"tmax"] = daily_tmax} else{temp1[j,"tmax"] = NA}
-         if (!is.nan(daily_tmin)) {temp1[j,"tmin"] = daily_tmin} else {temp1[j,"tmin"] = NA}
-         if (!is.nan(daily_prcp)) {temp1[j,"prcp"] = daily_prcp} else {temp1[j,"prcp"] = NA}
-       }
-       foo0[[i]] = temp1
-       #rm("temp0","temp1","temp_dates","temp0_day","daily_sw")
-       foo_name = paste0(S,".",E)
-       names(foo0)[i] = foo_name
-       i = i + 1
-     }
-   }
-   return (foo0)
+predict_time = subset(NOAA_Driver, ensemble==1)
+predict_time = predict_time$time
+
+## Driver data conversion
+
+sw_driver = subset(NOAA_Driver, ensemble!=0)
+sw_driver = sw_driver$surface_downwelling_shortwave_flux_in_air
+sw_driver = matrix(sw_driver, nrow=30 ,byrow = TRUE)
+
+#lw_driver = subset(NOAA_Driver, ensemble!=0)
+#lw_driver = lw_driver$surface_downwelling_longwave_flux_in_air
+#lw_driver = matrix(lw_driver, nrow=30 ,byrow = TRUE)
+
+sw_driver_gf = matrix(0, nrow=30, ncol = 1681)
+#lw_driver_gf = matrix(0, nrow=30, ncol = 1681)
+
+## filling gap (average)
+for(i in 1:840){
+  sw_driver_gf[,2*i-1]=sw_driver[,i]
+  sw_driver_gf[,2*i]=(sw_driver[,i]+sw_driver[,i+1])/2
+  #lw_driver_gf[,2*i-1]=lw_driver[,i]
+  #lw_driver_gf[,2*i]=(lw_driver[,i]+lw_driver[,i+1])/2
 }
-noaa = downsample_noaa(foo)
-#rm("foo")
+sw_driver_gf[,1681]=sw_driver[,841]
+#lw_driver_gf[,1681]=lw_driver[,841]
 
-# Stitch downwelling shortwave radiation from DAYMET monitoring and NOAA ensembles
-stitch_daymet_noaa= function(daymet, foo0){
-  temp = list()
-  for (i in 1:length(foo0)) {
-    siteID = substr(names(foo0)[i], start=1, stop=regexpr(".",names(foo0)[i],fixed=T)-1)
-    ensemble = substr(names(foo0)[i], start=regexpr(".",names(foo0)[i],fixed=T)+1, stop=nchar(names(foo0)[i]))
-    daymet_i = daymet[[siteID]]
-    noaa_i = foo0[[i]]
-    
-    time_daymet_noaa = c(daymet_i$date,seq(from=as.Date(daymet_i$date[length(daymet_i$date)])+1,to=as.Date(noaa_i$date[1])-1,by=1),noaa_i$date)
-    
-    daymet_noaa_sw = rep(NA, length(time_daymet_noaa))
-    daymet_noaa_sw[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$srad..W.m.2.
-    daymet_noaa_sw[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$sw
-    
-    daymet_noaa_tmax = rep(NA, length(time_daymet_noaa))
-    daymet_noaa_tmax[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$tmax..deg.c.
-    daymet_noaa_tmax[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$tmax - 273.15
-    
-    daymet_noaa_tmin = rep(NA, length(time_daymet_noaa))
-    daymet_noaa_tmin[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$tmin..deg.c.
-    daymet_noaa_tmin[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$tmin - 273.15
-    
-    daymet_noaa_prcp = rep(NA, length(time_daymet_noaa))
-    daymet_noaa_prcp[as.character.Date(time_daymet_noaa) %in% as.character.Date(daymet_i$date)] = daymet_i$prcp..mm.day.
-    daymet_noaa_prcp[as.character.Date(time_daymet_noaa) %in% as.character.Date(noaa_i$date)] = noaa_i$prcp
-    
-    temp[[i]] = data.frame(time_daymet_noaa, daymet_noaa_sw, daymet_noaa_tmax, daymet_noaa_tmin, daymet_noaa_prcp)
-    names(temp[[i]]) = c("date","sw","tmax","tmin","prcp")
-    names(temp)[i] = names(foo0)[i]
-  }
-  return(temp)
-}
-
-covariates = stitch_daymet_noaa(daymet,noaa)
-
-# Align daily target data and shortwave radiation covariate
-align_target_covariates = function(target, covariates) {
-  # This function is used to unify the time labels for two datasets,
-  # assuming time scales of the two are same and their time periods
-  # do not have breakpoints. NA's are assigned when one of the 
-  # datasets does not have a time period in the other.
-
-  output = list()
-  
-  for (i in 1:length(covariates)) {
-    siteID = substr(names(covariates)[i], start=1, stop=regexpr(".",names(covariates)[i],fixed=T)-1)
-    ensemble = substr(names(covariates)[i], start=regexpr(".",names(covariates)[i],fixed=T)+1, stop=nchar(names(covariates)[i]))
-    date_covariates_i = covariates[[i]]$date
-    date_target_i = target[[siteID]]$time
-    T1 = as.Date("2017-01-01") # start date of covariates data
-    T2 = as.Date("2017-02-01") # start date of target data
-    T3 = date_target_i[length(date_target_i)] # end date of target data
-    T4 = date_covariates_i[length(date_covariates_i)] # end date of covariate data
-    dT1T2 = as.numeric(T2 - T1)
-    if (T4 > T3) {
-      date = as.character.Date(date_covariates_i)
-      dT3T4 = as.numeric(T4 - T3)
-      covariate.sw = covariates[[i]]$sw
-      covariate.tmax = covariates[[i]]$tmax
-      covariate.tmin = covariates[[i]]$tmin
-      covariate.prcp = covariates[[i]]$prcp
-      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee,rep(NA,dT3T4))
-      target.le = c(rep(NA,dT1T2),target[[siteID]]$le,rep(NA,dT3T4))
-      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc,rep(NA,dT3T4))
-      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd,rep(NA,dT3T4))
-    }
-    else if (T3 > T4) {
-      dT3T4 = as.numeric(T3 - T4)
-      date = as.character.Date(seq(from=T1,to=T3,by=1))
-      covariate.sw = c(covariates[[i]]$sw,rep(NA,dT3T4))
-      covariate.tmax = c(covariates[[i]]$tmax,rep(NA,dT3T4))
-      covariate.tmin = c(covariates[[i]]$tmin,rep(NA,dT3T4))
-      covariate.prcp = c(covariates[[i]]$prcp,rep(NA,dT3T4))
-      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee)
-      target.le = c(rep(NA,dT1T2),target[[siteID]]$le)
-      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc)
-      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd)
-    }
-    else if (T3 == T4) {
-      date = as.character.Date(date_covariates_i)
-      covariate.sw = covariates[[i]]$sw
-      covariate.tmax = covariates[[i]]$tmax
-      covariate.tmin = covariates[[i]]$tmin
-      covariate.prcp = covariates[[i]]$prcp
-      target.nee = c(rep(NA,dT1T2),target[[siteID]]$nee)
-      target.le = c(rep(NA,dT1T2),target[[siteID]]$le)
-      target.vswc = c(rep(NA,dT1T2),target[[siteID]]$vswc)
-      target.vswc_sd = c(rep(NA,dT1T2),target[[siteID]]$vswc_sd)
-    }
-    output[[i]] = data.frame(date, siteID, ensemble, covariate.sw, covariate.tmax, covariate.tmin, covariate.prcp, target.nee, target.le, target.vswc, target.vswc_sd)
-    names(output[[i]]) = c("date", "siteID", "ensemble", "covariate.sw", "covariate.tmax", "covariate.tmin", "covariate.prcp", "target.nee", "target.le", "target.vswc", "target.vswc_sd")
-    names(output)[i] = names(covariates)[i]
-  }
-  
-  return(output)
-}
-tc = align_target_covariates(target,covariates)
 ```
 
 ```{r}
-# Forecast model
-neeForecast = "
-model{
-  #### Data Model: NEE
-  for(t in 1:n){
-    y[t] ~ dnorm(x[t],tau_obs_y)
-  }
-  
-  #### Process Model
-  for(t in 2:n){
-    mu[t] <- rho*x[t-1] + eta*z[t]
-    x[t]~dnorm(mu[t],tau_add_x)
-    
-    z[t]~dnorm(z[t-1],tau_add_z)
-  }
-  #### Priors
-  x[1] ~ dnorm(x_ic,tau_ic)
-  tau_obs_y ~ dgamma(a_obs,r_obs)
-  tau_add_x ~ dgamma(a_add_x,r_add_x)
-  tau_add_z ~ dgamma(a_add_z,r_add_z)
-  eta ~ dgamma(.5,.5)
-  rho ~ dgamma(1,1)
-}
-"
+
+loadFilename <- sprintf("%s.Rdata","NEE_BART_DLM")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+## Forward Simulation
+### settings
+Nmc = 1000         ## set number of Monte Carlo draws
+N.cols <- c("red","green","blue") ## set colors
+trans <- 0.8       ## set transparancy
+time = 1:length(time_BART)+1681    ## total time (1yr + 35 days)
+time1 = 1:length(time_BART)       ## calibration period
+time2 = (length(time_BART)+1):(length(time_BART)+1681)   ## forecast period
+timeN_predict = length(time2)
+tmp = matrix(0,1,length(time))
+ylim = c(-50,50)
 ```
 
 ```{r}
-# Initial conditions, numbers assigned arbitrarily, just for running
-
-data = list()
-for (i in 1:length(tc)) {
-  data[[i]] = list(y=tc[[i]]$target.nee, # NEE monitoring, from target data
-              z=tc[[i]]$covariate.sw, # combination of SW flux monitoring and ensemble forcasts
-              n=length(tc[[i]]$date),
-              x_ic=0,
-              tau_ic=0.5,
-              a_obs=0.01,
-              r_obs=0.01,
-              a_add_x=0.01,
-              r_add_x=0.01,
-              a_add_z=0.01,
-              r_add_z=0.01)
-  names(data)[i] = names(tc)[i]
+plot.run <- function(){
+  plot(time,tmp,type='n',ylim=ylim,ylab="NEE")
+  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time1,ci[2,],col="blue")
+  points(time1,nee_BART)
 }
-# Set inits
-init = list()
-nchain = 3
-for (i in 1:length(tc)) {
-  y = na.omit(tc[[i]]$target.nee)
-  init[[i]] = list()
-  for (j in 1:nchain) {
-    y.samp = sample(y,length(y),replace=TRUE)
-    init[[i]][[j]] = list(tau_obs_y=5/var(y.samp),tau_add_x=1/var(diff(y.samp)),tau_add_z=1/var(diff(y.samp)),eta=1,rho=1)
+```
+```{r,echo=FALSE}
+ci <- apply(as.matrix(predict),2,quantile,c(0.025,0.5,0.975))
+plot.run()
+```
+
+```{r}
+##` @param IC    Initial Conditions
+##` @param r     Intrinsic growth rate
+##` @param Kg    Across-site ('global') mean carrying capacity
+##` @param alpha Site random effect
+##` @param beta  Slope of precipitation effect on K
+##` @param ppt   Precipitation forecast
+##` @param Q     Process error (default = 0 for deterministic runs)
+##` @param n     Size of Monte Carlo ensemble
+forecastN <- function(IC,betaIntercept,betaX,betainsw,sw,Q=0,n=Nmc){
+  N <- matrix(NA,n,timeN_predict)  ## storage
+  Nprev <- IC           ## initialize
+  for(t in 1:timeN_predict){
+    mu = (1+betaX)*Nprev + betaIntercept + (betainsw*sw[,t])
+    N[,t] <- rnorm(n,mu,Q)                         ## predict next step
+    Nprev <- N[,t]                                  ## update IC
   }
-  names(init)[i] = names(tc)[i]
+  return(N)
 }
 ```
 
 ```{r}
-# Run forecasts. Here I only tested model for BART.0 (siteID=BART,ensemble=0). To run more models, change the for loop cycle from 1 to 1:124.
-j.model = list()
-for (i in 1) { 
-  j.model[[i]] = jags.model (file = textConnection(neeForecast),
-                             data = data[[i]],
-                             inits= init[[i]],
-                             n.chains=nchain) 
-}
-# MCMC diagnostics & Burn-in tests
-jags.out = list()
-for (i in 1) {
-  jags.out[[i]] = coda.samples (model = j.model[[i]],
-                                variable.names = c("tau_obs_y", 
-                                                   "tau_add_x", 
-                                                   "tau_add_z",
-                                                   "eta",
-                                                   "rho"),
-                                n.iter=5000)
-  plot(jags.out[[i]])
-}
+
+## calculate mean of all inputs
+sw.mean <- matrix(apply(sw_driver_gf,2,mean),1,timeN_predict) ## driver
+#lw.mean <- matrix(apply(lw_driver_gf,2,mean),1,timeN_predict)
+## parameters
+params_mat <- as.matrix(params)
+param.mean <- apply(params_mat,2,mean)
+## initial conditions
+IC <- as.matrix(predict)
+
+##Deterministic prediction
+N.det <- forecastN(IC=mean(IC[,"x[17520]"]),
+                   betaIntercept=param.mean["betaIntercept"],
+                   betaX=param.mean["betaX"],
+                   betainsw=param.mean["betainsw"],
+                   sw=sw.mean,
+                   Q=0,  ## process error off
+                   n=1)
+
+## Plot run
+plot.run()
+lines(time2,N.det,col="purple",lwd=3)
+
 ```
 
 ```{r}
-# Plot to determine burn-in
-bgr = list()
-for (i in 1) {
-  gelman.diag(jags.out[[i]])
-  bgr[[i]] = gelman.plot(jags.out[[i]])
+## Monte Carlo Error Propagation
+Nmc = 1000
+#@ sample parameter rows from previous analysis
+prow = sample.int(nrow(params_mat),Nmc,replace=TRUE)
 
-}
-# DOES NOT SEEM TO CONVERGE AT THIS TIME. 
+N.I <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=param.mean["betaIntercept"],
+                   betaX=param.mean["betaX"],
+                   betainsw=param.mean["betainsw"],
+                   sw=sw.mean,
+                   Q=0,  ## process error off
+                   n=Nmc)
+
+## Plot run
+plot.run()
+N.I.ci = apply(N.I,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
+
+
+
 ```
 
 ```{r}
-# Plot the forecast time-series with uncertainty partitioning
+##Parameter Uncertainty
+
+N.IP <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=params_mat[prow,"betaIntercept"],
+                   betaX=params_mat[prow,"betaX"],
+                   betainsw=params_mat[prow,"betainsw"],
+                   sw=sw.mean,
+                   Q=0,  ## process error off
+                   n=Nmc)
+
+## Plot run
+plot.run()
+N.IP.ci = apply(N.IP,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
 
 ```
 
+```{r}
+##Driver Uncertainty
+#sample driver rows
+drow_sw = sample.int(nrow(sw_driver_gf),Nmc,replace = TRUE)
+#drow_lw = sample.int(nrow(lw_driver_gf),Nmc,replace = TRUE)
 
+N.IPD <- forecastN(IC=IC[prow,"x[17520]"],
+                   betaIntercept=params_mat[prow,"betaIntercept"],
+                   betaX=params_mat[prow,"betaX"],
+                   betainsw=params_mat[prow,"betainsw"],
+                   sw=sw_driver_gf[drow_sw,],
+                   Q=0,  ## process error off
+                   n=Nmc)
 
+## Plot run
+plot.run()
+N.IPD.ci = apply(N.IPD,2,quantile,c(0.025,0.5,0.975),na.rm=TRUE)
+ecoforecastR::ciEnvelope(time2,N.IPD.ci[1,],N.IPD.ci[3,],col=col.alpha(N.cols[3],trans))
+ecoforecastR::ciEnvelope(time2,N.IP.ci[1,],N.IP.ci[3,],col=col.alpha(N.cols[2],trans))
+ecoforecastR::ciEnvelope(time2,N.I.ci[1,],N.I.ci[3,],col=col.alpha(N.cols[1],trans))
+lines(time2,N.I.ci[2,],lwd=0.5)
 
+```
 
+```{r}
+### calculation of variances
+varI     <- apply(N.I,2,var)
+varIP    <- apply(N.IP,2,var)
+varIPD   <- apply(N.IPD,2,var)
+#varIPDE  <- apply(N.IPDE,2,var)
+#varIPDEA <- apply(N.IPDEA,2,var)
+varMat   <- rbind(varI,varIP,varIPD)
 
-
+## out-of-sample stacked area plot
+V.pred.rel <- apply(varMat,2,function(x) {x/max(x)})
+plot(time2,V.pred.rel[1,],ylim=c(0,1),type='n',main="Relative Variance: Out-of-Sample",ylab="Proportion of Variance",xlab="time")
+ciEnvelope(time2,rep(0,ncol(V.pred.rel)),V.pred.rel[1,],col=N.cols[1])
+ciEnvelope(time2,V.pred.rel[1,],V.pred.rel[2,],col=N.cols[2])
+ciEnvelope(time2,V.pred.rel[2,],V.pred.rel[3,],col=N.cols[3])
+ciEnvelope(time2,V.pred.rel[3,],V.pred.rel[3,],col=N.cols[3])
+#ciEnvelope(time2,V.pred.rel[4,],V.pred.rel[5,],col=N.cols[5])
+legend("topright",legend=c("Driver","Parameter","InitCond"),col=rev(N.cols),lty=1,lwd=3)
+```
