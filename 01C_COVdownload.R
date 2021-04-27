@@ -21,12 +21,13 @@ source("00C_Library+Directory_Setting.R")
 Tmp <- loadByProduct(dpID="DP1.00002.001", site=c("BART","KONZ","OSBS","SRER"),
                      startdate="2020-01", enddate=ym, check.size=F)
 temp_data = Tmp[["SAAT_30min"]]
+rm(Tmp)
 
 newFilename <- sprintf("%s.Rdata","Air_Temperature")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 save(temp_data, file = newFilename)
 
-rm(Tmp,temp_data)
+rm(temp_data)
 
 precip <- loadByProduct(dpID="DP1.00006.001", site=c("BART","KONZ","OSBS","SRER"),
                         startdate="2020-01", enddate=ym, check.size=F)
@@ -36,7 +37,7 @@ rm(precip)
 newFilename <- sprintf("%s.Rdata","Precipitation")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 save(precip_data, file = newFilename)
-rm(precip, precip_data)
+rm(precip_data)
 
 swlw <- loadByProduct(dpID="DP1.00023.001", site=c("BART","KONZ","OSBS","SRER"),
                       startdate="2020-01", enddate=ym, check.size=F)
@@ -45,7 +46,7 @@ swlw_data = swlw[["SLRNR_30min"]]
 newFilename <- sprintf("%s.Rdata","Radiance")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 save(swlw_data, file = newFilename)
-rm(swlw,swlw_data)
+rm(swlw_data)
 
 #wind <- loadByProduct(dpID="DP1.00001.001", site=c("BART","KONZ","OSBS","SRER"),
 #              startdate="2020-01", enddate=ym, check.size=F)
