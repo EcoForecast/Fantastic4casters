@@ -1,15 +1,22 @@
 ## Update data daily using cron
-# setting the terrestral data script to run at 5:00 AM daily
+# setting the terrestrial data script to run at 5:00 AM daily
 
-library(tidyverse)
-library(readr)
+source("00C_LibrarySetting.R")
 
 # definition for directory, sites, date and cycles
 
 basePath <- getwd()
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
-base_dir <- paste0(basePath,"/../SemesterProjectdrivers/noaa/NOAAGEFS_1hr")
+base_dir <- paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr")
+local_directory <- paste0(basePath,"/drivers/")
+
+#check drivers directory exist
+if (file.exists(local_directory)){
+} else {
+  dir.create(file.path(local_directory))
+}
+
 site_names <- c("BART","KONZ","OSBS","SRER")
 cycle_names <- "00"
 
@@ -90,10 +97,10 @@ noaa_gefs_read <- function(base_dir, date, cycle, sites){
 }
 
 
-# Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (00,06,12,18)
+# Download NOAA data for each sites (BART, KONZ, OSBS, SRER) and cycles (we download only 00 cycle)
 
 for (i in 1:4){
-  download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"SemesterProjectdrivers/"))
+  download_noaa_files_s3(siteID = site_names[i], date = theDate, cycle = cycle_names, local_directory <- paste0(basePath,"/drivers/"))
 }
 
 # data conversion from cdf to csv, and plot data for ensemble 0 case as an example
