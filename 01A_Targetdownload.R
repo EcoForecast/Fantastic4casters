@@ -7,6 +7,7 @@ basePath <- getwd()
 graphPath <- paste0(basePath,"/graph/")
 dataPath <- paste0(basePath,"/data/")
 
+#check directory existance
 if (file.exists(graphPath)){
 } else {
   dir.create(file.path(graphPath))
