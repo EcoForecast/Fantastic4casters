@@ -2,24 +2,8 @@
 # This code is based on "Milestone4_Data_download.Rmd" 
 # setting the terrestral data script to run at 5:00 AM daily
 
-## Directory Setting
-basePath <- getwd()
-graphPath <- paste0(basePath,"/graph/")
-dataPath <- paste0(basePath,"/data/")
-
-#check directory existance
-if (file.exists(graphPath)){
-} else {
-  dir.create(file.path(graphPath))
-}
-
-if (file.exists(dataPath)){
-} else {
-  dir.create(file.path(dataPath))
-}
-
-## Library Setting (tidyverse, readr are required for this step)
-source("00C_Librarysetting.R")
+## Library + directory Setting (tidyverse, readr are required for this step)
+source("00C_Library+Directory_Setting.R")
 
 site_names <- c("BART","KONZ","OSBS","SRER")
 

@@ -1,21 +1,9 @@
 ## Update data daily using cron
 # setting the terrestrial data script to run at 5:00 AM daily
 
-source("00C_LibrarySetting.R")
+source("00C_Library+Directory_Setting.R")
 
-# definition for directory, sites, date and cycles
-
-basePath <- getwd()
-graphPath <- paste0(basePath,"/graph/")
-dataPath <- paste0(basePath,"/data/")
-base_dir <- paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr")
-local_directory <- paste0(basePath,"/drivers/")
-
-#check drivers directory exist
-if (file.exists(local_directory)){
-} else {
-  dir.create(file.path(local_directory))
-}
+# definition for sites, date and cycles
 
 site_names <- c("BART","KONZ","OSBS","SRER")
 cycle_names <- "00"
