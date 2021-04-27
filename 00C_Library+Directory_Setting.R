@@ -25,3 +25,12 @@ if (file.exists(dataPath)){
 } else {
   dir.create(file.path(dataPath))
 }
+
+base_dir <- paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr")
+local_directory <- paste0(basePath,"/drivers/")
+
+#check drivers directory exist
+if (file.exists(local_directory)){
+} else {
+  dir.create(file.path(local_directory))
+}
