@@ -94,7 +94,9 @@ precip_driver_gf[,1681]=precip_driver[,841]
 
 ```{r}
 #SET ENSEMBLE RUNS
-ne = 30 
+ne = 30         #needs to stay 30 unless we also sample (with replacement) the noaa driver ensembles
+
+#AVERAGE CHAINS
 
 #parsing MCMC output 
 beta_LE = sample(joint_out$params[[2]][,1], ne)
@@ -128,38 +130,10 @@ rm(qa_nee)
 qa_le = joint_out$data$LE_obs[!is.na(joint_out$data$LE_obs)]
 IC_LE = rnorm(ne, mean = qa_le[length(qa_le)], sd = 0.1)
 rm(qa_le)
-qa_vswc = joint_out$data$VSWC_obs[!is.na(joint_out$data$VSWC_obs)]
+qa_vswc = joint_out$data$VSWC_obs[!is.na(joint_out$data$VSWC_obs)]   #remember outlier 
 IC_VSWC = rnorm(ne, mean = qa_vswc[length(qa_vswc)], sd = 0.1)
 rm(qa_vswc)
 
-```
-
-```{r}
-#### TO BE UPDATED
-forecastN <- function(IC_NEE,IC_LE,IC_VSWC,beta_NEE,beta_LE,beta_VSWC,beta_NL,beta_NV,beta_LV,beta_LN,beta_VN,beta_VL,
-                        beta_NEEI,beta_LEI,beta_VSWCI,beta_sw1,beta_sw2,beta_lw,beta_temp,beta_precip,sw,lw,temp,precip
-                        ,Q=0,n=Nmc){
-  NEE <- matrix(NA,n,timeN_predict)  ## storage
-  LE <- matrix(NA,n,timeN_predict)
-  VSWC <- matrix(NA,n,timeN_predict)
-  Nprev_NEE <- IC_NEE           ## initialize
-  Nprev_LE <- IC_LE
-  Nprev_VSWC <- IC_VSWC
-  for(t in 1:timeN_predict){
-    mu_nee = (1+beta_NEE)*Nprev_NEE+beta_NEEI+beta_NL*Nprev_LE+beta_NV*Nprev_VSWC+beta_sw1*sw +beta_temp*temp
-    mu_le = (1+beta_LE)*Nprev_LE+beta_LEI+beta_LN*Nprev_NEE+beta_LV*Nprev_VSWC+beta_sw2*sw +beta_lw*lw
-    mu_vswc = (1+beta_VSWC)*Nprev_VSWC+beta_VSWCI+beta_VN*Nprev_NEE+beta_VL*Nprev_LE+beta_precip*precip
-    NEE[,t] <- rnorm(n,mu_nee,Q)                         ## predict next step
-    LE[,t] <- rnorm(n,mu_le,Q)
-    VSWC[,t] <- rnorm(n,mu_vswc,Q)
-    #Nprev_NEE <- NEE[,t]                                 ## update IC
-    #Nprev_LE <- LE[,t]
-    #Nprev_VSWC <- VSWC[,t]
-  }
- # N <- list(NEE_predict=NEE, LE_predict=LE, VSWC_predict=VSWC)
- # return(N)
-  return(cbind(NEE=NEE, LE=LE, VSWC=VSWC))
-}
 ```
 
 ```{r}
@@ -178,19 +152,6 @@ ensembleforecast <- function(IC_NEE,IC_LE,IC_VSWC,
   VSWC = (1+beta_VSWC)*Nprev_VSWC+beta_VSWCI+beta_VN*Nprev_NEE+beta_VL*Nprev_LE+beta_precip*precip
   return(cbind(NEE=NEE, LE=LE, VSWC=VSWC))
                      }
-```
-
-```{r}
-## Forward Simulation Time Setup
-Nmc = 1000         ## set number of Monte Carlo draws
-N.cols <- c("red","green","blue") ## set colors
-trans <- 0.8       ## set transparancy
-time = 1:length(time_KONZ)+1681    ## total time (1yr + 35 days)
-time1 = 1:length(time_KONZ)       ## calibration period
-time2 = (length(time_KONZ)+1):(length(time_KONZ)+1681)   ## forecast period
-timeN_predict = length(time2)
-tmp = matrix(0,1,length(time))
-#ylim = c(-500,700)
 ```
 
 ```{r}
@@ -217,26 +178,15 @@ for(t in 1:nt){
 ```
 
 ```{r}
-
+#Ensemble Forecast Visualizations
 output[is.nan(output)] = 0
 output[is.infinite(output)] = 0
 output.ensemble = output                         ## save original ensemble projection
 
-## average the output to daily
-bin = 86400 / 48          ## seconds per day / timestep = number of timesteps per day
-#out.daily = array(0.0, c(ne, ceiling(nt/bin), 3))  ## [day, ensemble, variables]
-out.daily = array(0.0, c(ne, ceiling(nt/48),  3))
-for(i in 1:3){                 ## loop over each variable
-  #print(i)
-  out.daily[,,i] <- apply(output[,,i],1, ctapply, rep(1:365,each=bin)[1:nt], mean)
-}
-
-## Basic time-series visualizations
-varnames <- c("NEE", "LE", "VSWC")
-units <- c("units", "units", "units")
-
+varnames = c("NEE", "LE", "VSWC")
+units = c("units", "units", "units")            #Change later 
 for(i in 1:3){  ## loop over variables
-  ci = apply(out.daily[, , i], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
+  ci = apply(output[, , i], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
   plot(ci[2, ], main = varnames[i], 
        xlab = "time", ylab = units[i], type='l',ylim  =range(ci))
   ciEnvelope(1:ncol(ci), ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
