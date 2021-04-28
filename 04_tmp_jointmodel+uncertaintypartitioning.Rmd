@@ -15,8 +15,8 @@ library(readr)
 library(rjags)
 library(rnoaa)
 library(daymetr)
-library(ecoforecastR)
-#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+#library(ecoforecastR)
+source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 
 #remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
 ```
