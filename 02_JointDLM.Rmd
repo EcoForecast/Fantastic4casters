@@ -70,6 +70,22 @@ VSWC_KONZ =Target_30min_KONZ$vswc
 VSWC_OSBS =Target_30min_OSBS$vswc
 VSWC_SRER =Target_30min_SRER$vswc
 
+newFilename <- sprintf("%s.Rdata","Target_time")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(time_BART,time_KONZ,time_SRER,time_OSBS,file=newFilename)
+
+newFilename <- sprintf("%s.Rdata","Target_LE")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(LE_BART,LE_KONZ,LE_SRER,LE_OSBS,file=newFilename)
+
+newFilename <- sprintf("%s.Rdata","Target_NEE")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(NEE_BART,NEE_KONZ,NEE_SRER,NEE_OSBS,file=newFilename)
+
+newFilename <- sprintf("%s.Rdata","Target_VSWC")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(VSWC_BART,VSWC_KONZ,VSWC_SRER,VSWC_OSBS,file=newFilename)
+
 #subset covariate data of KONZ site
 swlw_KONZ = subset(swlw_data, siteID == 'KONZ' & verticalPosition == '040' & 
                      startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
@@ -303,7 +319,7 @@ time.rng = c(1,length(time))
 
 # save MCMC output (after burn-in removal)
 
-newFilename <- sprintf("%s.Rdata","joint_3rd_burn")
+newFilename <- sprintf("%s.Rdata","joint_burn")
 newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
 save(joint_out, file = newFilename)
 
