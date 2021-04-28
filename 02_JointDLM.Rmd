@@ -1,0 +1,456 @@
+---
+title: "02_Joint_DLM_inital"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "4/27/2021"
+output: html_document
+---
+
+```{r}
+## library and directory setting
+
+source("00C_Library+Directory_Setting.R")
+```
+
+```{r}
+# If you need to download data, run this source Rscript
+###source('01A_Targetdownload.R')
+##source('01C_COVdownload.R')
+
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Radiance")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Air_Temperature")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Precipitation")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+```
+
+```{r}
+##subset time (initial period 2020 March to 2021 February)
+Target_30min_BART = subset(Target_30min, siteID == 'BART' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+##subset site and time
+time_BART = Target_30min_BART$time
+time_KONZ = Target_30min_KONZ$time
+time_OSBS = Target_30min_OSBS$time
+time_SRER = Target_30min_SRER$time
+
+LE_BART = Target_30min_BART$le
+LE_KONZ = Target_30min_KONZ$le
+LE_OSBS = Target_30min_OSBS$le
+LE_SRER = Target_30min_SRER$le
+
+NEE_BART = Target_30min_BART$nee
+NEE_KONZ =Target_30min_KONZ$nee
+NEE_OSBS =Target_30min_OSBS$nee
+NEE_SRER =Target_30min_SRER$nee
+
+VSWC_BART = Target_30min_BART$vswc
+VSWC_KONZ =Target_30min_KONZ$vswc
+VSWC_OSBS =Target_30min_OSBS$vswc
+VSWC_SRER =Target_30min_SRER$vswc
+
+#subset covariate data of KONZ site
+swlw_KONZ = subset(swlw_data, siteID == 'KONZ' & verticalPosition == '040' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+precip_KONZ = subset(precip_data, siteID == 'KONZ' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+temp_KONZ = subset(temp_data, siteID == 'KONZ' & verticalPosition == '010' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+#make data frame with target and covariate data
+data_03 = data.frame(time = time_KONZ, LE_obs = LE_KONZ, NEE_obs = NEE_KONZ, VSWC_obs = VSWC_KONZ)
+data_03$insw = swlw_KONZ$inSWMean[match(data_03$time,swlw_KONZ$startDateTime)]
+data_03$inlw = swlw_KONZ$inLWMean[match(data_03$time,swlw_KONZ$startDateTime)]
+data_03$temp = temp_KONZ$tempSingleMean[match(data_03$time,temp_KONZ$startDateTime)]
+data_03$precip = precip_KONZ$priPrecipBulk[match(data_03$time,precip_KONZ$startDateTime)]
+```
+
+
+```{r}
+#Dynamic Linear Model for joint dataset
+
+JointDLM = "
+model{
+  
+  #### Priors
+  NEE[1] ~ dnorm(NEE_ic,tau_nee_ic)
+  LE[1] ~ dnorm(LE_ic,tau_le_ic)
+  VSWC[1] ~ dnorm(VSWC_ic,tau_vswc_ic)
+  
+  tau_nee_obs ~ dgamma(a_nee_obs,r_nee_obs)
+  tau_nee_add ~ dgamma(a_nee_add,r_nee_add)
+  tau_le_obs ~ dgamma(a_le_obs,r_le_obs)
+  tau_le_add ~ dgamma(a_le_add,r_le_add)
+  tau_vswc_obs ~ dgamma(a_vswc_obs,r_vswc_obs)
+  tau_vswc_add ~ dgamma(a_vswc_add,r_vswc_add)
+  
+  #### Fixed effect
+  
+  beta_NEE ~ dnorm(0,0.001)
+  beta_LE ~ dnorm(0,0.001)
+  beta_VSWC ~ dnorm(0,0.001)
+  beta_NL ~ dnorm(0,0.001)
+  beta_NV ~ dnorm(0,0.001)
+  beta_LN ~ dnorm(0,0.001)
+  beta_LV ~ dnorm(0,0.001)
+  beta_VN ~ dnorm(0,0.001)
+  beta_VL ~ dnorm(0,0.001)
+  beta_NEEI ~ dnorm(0,0.001)
+  beta_LEI ~ dnorm(0,0.001)
+  beta_VSWCI ~ dnorm(0,0.001)
+  beta_sw1 ~ dnorm(0,0.001)
+  beta_sw2 ~ dnorm(0,0.001)
+  beta_lw ~ dnorm(0,0.001)
+  beta_temp ~ dnorm(0,0.001)
+  beta_precip ~ dnorm(0,0.001)
+  
+  for(i in 1:3){
+  muXfI[i] ~ dnorm(0,0.001)
+  tauXfI[i] ~ dgamma(0.01,0.01)
+  }
+  for(j in 1:4){
+  muXfC[j] ~ dnorm(0,0.001)
+  tauXfC[j] ~ dgamma(0.01,0.01)
+  }
+  
+  #### Data Model
+  for(t in 1:n){
+    NEE_obs[t] ~ dnorm(NEE[t],tau_nee_obs)
+    LE_obs[t] ~ dnorm(LE[t],tau_le_obs)
+    VSWC_obs[t] ~ dnorm(VSWC[t],tau_vswc_obs)
+    XfI[t,1] ~ dnorm(muXfI[1],tauXfI[1])
+    XfI[t,2] ~ dnorm(muXfI[2],tauXfI[2])
+    XfI[t,3] ~ dnorm(muXfI[3],tauXfI[3])
+    XfC[t,1] ~ dnorm(muXfC[1],tauXfC[1])
+    XfC[t,2] ~ dnorm(muXfC[2],tauXfC[2])
+    XfC[t,3] ~ dnorm(muXfC[3],tauXfC[3])
+    XfC[t,4] ~ dnorm(muXfC[4],tauXfC[4])
+  }
+  
+  #### Process Model
+  for(t in 2:n){
+    mu_nee[t] <- NEE[t-1] + beta_NEE * NEE[t-1] + beta_NL * LE[t-1] + beta_NV * VSWC[t-1] + beta_NEEI * XfI[t,1] + beta_sw1 * XfC[t,1] + beta_temp * XfC[t,3]
+    mu_le[t] <- LE[t-1] + beta_LE * LE[t-1] + beta_LN * NEE[t-1] + beta_LV * VSWC[t-1] + beta_LEI * XfI[t,2] + beta_sw2 * XfC[t,1] + beta_lw * XfC[t,2]
+    mu_vswc[t] <- VSWC[t-1] + beta_VSWC * VSWC[t-1] + beta_VN * NEE[t-1] + beta_VL * LE[t-1] + beta_VSWCI * XfI[t,3] + beta_precip * XfC[t,4]
+    
+    NEE[t]~dnorm(mu_nee[t],tau_nee_add)
+    LE[t]~dnorm(mu_le[t],tau_le_add)
+    VSWC[t]~dnorm(mu_vswc[t],tau_vswc_add)
+  }
+  
+}
+"
+
+```
+
+```{r}
+## organize input of covariate and intercept of the model
+XfI = matrix(1,nrow = length(time_KONZ), ncol = 3) ## Intercept of target variables set to "1"
+tmp = data_03[,5:8]
+XfC = matrix(NA, nrow = length(time_KONZ), ncol = 4) ## generate covariate dataset
+for(i in 1:4){
+  XfC[,i] = tmp[,i]
+}
+
+## assign input of JAGS model for Markov Chains Monte Carlo (MCMC) with initial conditions
+data_joint<-list(NEE_obs=data_03$NEE_obs,LE_obs=data_03$LE_obs,VSWC_obs=data_03$VSWC_obs, n=length(time_KONZ),
+            NEE_ic = 0, LE_ic = 0, VSWC_ic = 0, tau_nee_ic = 0.00001, tau_le_ic = 0.00001, tau_vswc_ic = 0.00001,
+            a_nee_obs=3, r_nee_obs=1, a_nee_add=3, r_nee_add=1,
+            a_le_obs=0.5, r_le_obs=1, a_le_add=0.1, r_le_add=0.1,
+            a_vswc_obs=0.1, r_vswc_obs=0.1, a_vswc_add=0.1, r_vswc_add=0.1,
+            XfI = XfI, XfC = XfC)
+
+```
+
+```{r}
+#Set inits for JAGS model
+nchain = 3
+init_joint <- list()
+
+y_NEE = data_03$NEE_obs 
+y_LE = data_03$LE_obs
+y_VSWC = data_03$VSWC_obs
+y_NEE = na.omit(y_NEE)
+y_LE = na.omit(y_LE)
+y_VSWC = na.omit(y_VSWC)
+
+for(i in 1:nchain){
+  y.samp_NEE = sample(y_NEE,length(y_NEE),replace=TRUE)
+  y.samp_LE = sample(y_LE,length(y_LE),replace=TRUE)
+  y.samp_VSWC = sample(y_VSWC,length(y_VSWC),replace=TRUE)
+  init_joint[[i]] <- list(tau_nee_add=1/var(diff(y.samp_NEE)),tau_nee_obs=5/var(y.samp_NEE),
+                          tau_le_add=1/var(diff(y.samp_LE)),tau_le_obs=5/var(y.samp_LE),
+                          tau_vswc_add=1/var(diff(y.samp_VSWC)),tau_vswc_obs=5/var(y.samp_VSWC))
+}
+```
+
+```{r}
+#Running JAGS model
+
+j.model_joint   <- jags.model (file = textConnection(JointDLM),
+                            data = data_joint,
+                            inits = init_joint,
+                            n.chains = 3)
+
+```
+
+```{r}
+#Define variable names to get coda sample
+variable_names = c("NEE",   "LE",  "VSWC",
+                   "tau_nee_obs", "tau_nee_add", "tau_le_obs", "tau_le_add", "tau_vswc_obs", "tau_vswc_add",
+                   "beta_NEE", "beta_LE", "beta_VSWC", "beta_NEEI", "beta_LEI", "beta_VSWCI", 
+                   "beta_NL", "beta_NV", "beta_LN", "beta_LV", "beta_VN", "beta_VL", 
+                   "beta_sw1", "beta_sw2", "beta_lw", "beta_temp", "beta_precip")
+
+```
+
+
+```{r}
+#run coda sample
+jags.out_joint <- coda.samples (model = j.model_joint,
+                            variable.names = variable_names,
+                                n.iter = 20000, thin=20)
+
+
+```
+
+
+```{r}
+## split output
+
+joint_out = list(params=NULL,predict=NULL,model=JointDLM,data=data_joint)
+mfit = as.matrix(jags.out_joint,chains=TRUE)
+pred.cols = union(grep("LE[",colnames(mfit),fixed=TRUE),grep("NEE[",colnames(mfit),fixed=TRUE))
+pred.cols = union(pred.cols,grep("VSWC[",colnames(mfit),fixed=TRUE))
+chain.col = which(colnames(mfit)=="CHAIN")
+joint_out$predict = mat2mcmc.list(mfit[,c(chain.col,pred.cols)])
+joint_out$params   = mat2mcmc.list(mfit[,-pred.cols])
+rm(jags.out_joint)
+
+```
+
+
+```{r}
+# burn-in test : trace plot and gelman diagnostic 
+newFilename <- sprintf("%s.pdf","joint_KONZ_traceplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+pdf(file = newFilename)
+plot(joint_out$params)
+dev.off()
+
+newFilename <- sprintf("%s.pdf","joint_KONZ_gelmanplot")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+pdf(file = newFilename)
+BGR_params <- gelman.plot(joint_out$params)
+dev.off()
+
+BGR_params$shrink > 1.1
+gelman.diag(joint_out$params)
+```
+
+```{r}
+## save MCMC output (before removing burn-in)
+
+newFilename <- sprintf("%s.Rdata","joint_beforeburn")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(joint_out, file = newFilename)
+
+```
+
+
+
+
+```{r}
+# burn-in removal
+
+# set the last point of burn-in removal
+
+burn_n = 500
+joint_out$params <- window(joint_out$params,start=burn_n)
+joint_out$predict <- window(joint_out$predict,start=burn_n)
+
+summary(joint_out$params)
+cor(as.matrix(joint_out$params))
+pairs(as.matrix(joint_out$params))
+time = data_03$time
+time.rng = c(1,length(time))
+
+# save MCMC output (after burn-in removal)
+
+newFilename <- sprintf("%s.Rdata","joint_3rd_burn")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(joint_out, file = newFilename)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates (save the data as jpeg format)
+
+#for KONZ
+# load the data file
+#loadFilename <- sprintf("%s.Rdata","joint_3rd_burn")
+#loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+#load(file = loadFilename)
+
+newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_NEE")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+rm()
+x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="KONZ NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,NEE_KONZ,pch="+",cex=0.5)
+dev.off()
+
+newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_LE")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+rm()
+x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="KONZ LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,LE_KONZ,pch="+",cex=0.5)
+dev.off()
+
+
+newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_VSWC")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+rm()
+x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(VSWC_KONZ,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,VSWC_KONZ,pch="+",cex=0.5)
+dev.off()
+
+rm(out)
+
+```
+
+
+```{r}
+
+## plot historical fitting data on the Rstudio
+
+#newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_VSWC")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+rm()
+x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+#jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="KONZ NEE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,NEE_KONZ,pch="+",cex=0.5)
+#dev.off()
+
+#newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_VSWC")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+rm()
+x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+#jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(out[,x.cols],na.rm=TRUE),ylab="KONZ LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,LE_KONZ,pch="+",cex=0.5)
+#dev.off()
+
+
+
+#newFilename <- sprintf("%s.jpg","joint_modelplot_DLM_KONZ_VSWC")
+#newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+
+time = time_KONZ
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(joint_out$predict)
+x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+#jpeg(file = newFilename)
+plot(time,ci[2,],type='n',ylim=range(VSWC_KONZ,na.rm=TRUE),ylab="KONZ VSWC",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+#ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+ciEnvelope(time,ci[1,],ci[3,],col=col.alpha("lightBlue",0.75))
+points(time,VSWC_KONZ,pch="+",cex=0.5)
+#dev.off()
+
+
+rm(out)
+
+
+```
