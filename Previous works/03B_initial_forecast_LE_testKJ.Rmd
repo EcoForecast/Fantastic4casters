@@ -1,0 +1,284 @@
+---
+title: "03B_initial_forecast_LE"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "4/14/2021"
+output: html_document
+---
+
+```{r}
+## Package check and load
+
+#install.packages("tidyverse")
+#install.packages("readr")
+library(tidyverse)
+library(readr)
+library(rjags)
+library(rnoaa)
+library(daymetr)
+library(ecoforecastR)
+#source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
+
+#remotes::install_github("EcoForecast/ecoforecastR",force=TRUE)
+```
+
+```{r}
+# If you need run for data download
+###source('01A_Targetdownload.R')
+
+# definition for PATH
+basePath <- getwd() 
+graphPath <- paste0(basePath,"/graph/")
+dataPath <- paste0(basePath,"/data/")
+
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+# load the covariate data file from NEON (Select [Air_Temperature, Humidity, Precipitation, Pressure, Radiance, Wind])
+loadFilename <- sprintf("%s.Rdata","Radiance")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+swlw_2 = swlw[["SLRNR_30min"]]
+rm(swlw)
+swlw = swlw_2
+rm(swlw_2)
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+```
+
+```{r}
+##subset
+Target_30min_BART = subset(Target_30min, siteID == 'BART' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_KONZ = subset(Target_30min, siteID == 'KONZ' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_OSBS = subset(Target_30min, siteID == 'OSBS' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+Target_30min_SRER = subset(Target_30min, siteID == 'SRER' & time >= as.POSIXct('2020-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+
+time_BART = Target_30min_BART$time
+time_KONZ = Target_30min_KONZ$time
+time_OSBS = Target_30min_OSBS$time
+time_SRER = Target_30min_SRER$time
+
+le_BART = Target_30min_BART$le
+le_KONZ = Target_30min_KONZ$le
+le_OSBS = Target_30min_OSBS$le
+le_SRER = Target_30min_SRER$le
+
+swlw_BART = subset(swlw, siteID == 'BART' & verticalPosition == '060' & 
+                     startDateTime >= as.POSIXct('2020-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-03-01 00:00', tz="UTC"))
+
+data_03B = data.frame(time = time_BART, LE = le_BART)
+data_03B$insw = swlw_BART$inSWMean[match(data_03B$time,swlw_BART$startDateTime)]
+data_03B$inlw = swlw_BART$inLWMean[match(data_03B$time,swlw_BART$startDateTime)]
+data_03B$outlw = swlw_BART$outLWMean[match(data_03B$time,swlw_BART$startDateTime)]
+```
+
+
+```{r}
+source("00A_fit_dlm_revised.R")
+```
+
+```{r}
+
+## fit the model ## It is quite time-consuming process (about 30~60 min.)
+le_dynamic.out <- fit_dlm(model=list(obs="LE",fixed="~ 1 + X + inlw",n.iter=10000,n.thin=10),data_03B)
+
+```
+
+
+```{r}
+# burn-in test (covergence : OK / Gelman plot : >260 OK)
+params <- le_dynamic.out$params
+plot(params)
+BGR_params <- gelman.plot(params)
+BGR_params$shrink > 1.1
+gelman.diag(params)
+```
+
+```{r}
+# burn-in removal
+params <- window(le_dynamic.out$params,start=400)
+predict <- window(le_dynamic.out$predict,start=400)
+
+summary(params)
+cor(as.matrix(params))
+pairs(as.matrix(params))
+time = data_03B$time
+time.rng = c(1,length(time))
+
+newFilename <- sprintf("%s.Rdata","LE_BART_DLM_lw")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(params, predict, file = newFilename)
+
+rm(swlw,le_dynamic.out,params,predict)
+
+```
+
+```{r}
+## Plot the model and data time series with interval estimates
+
+#for BART
+# load the data file
+newFilename <- sprintf("%s.jpg","LE_BART_modelplot_DLM")
+newFilename <- paste(graphPath, newFilename, sep="", collapse = NULL)
+loadFilename <- sprintf("%s.Rdata","LE_BART_DLM")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+time = time_BART
+time.rng = c(1,length(time)) ## adjust to zoom in and out
+out <- as.matrix(predict)
+rm(params, predict)
+x.cols <- grep("^x",colnames(out)) ## grab all columns that start with the letter x
+ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) ## 
+plot(time,ci[2,],type='n',ylim=range(le_BART,na.rm=TRUE),ylab="BART LE",xlim=time[time.rng])
+## adjust x-axis label to be monthly if zoomed
+if(diff(time.rng) < 100){
+  axis.Date(1, at=seq(time[time.rng[1]],time[time.rng[2]],by='month'), format = "%Y-%m")
+}
+ecoforecastR::ciEnvelope(time,ci[1,],ci[3,],col=ecoforecastR::col.alpha("lightBlue",0.75))
+points(time,le_BART,pch="+",cex=0.5)
+
+rm(out)
+
+
+```
+
+```{r}
+
+# Manipulate above code just freely #########################################
+############################################### Below code is under revision
+
+```
+
+
+```{r}
+#NOAA data load
+# Download NOAA climate forecasts (hourly) and downsample to daily scale
+source("00B_NOAAconversion.R")
+
+for (S in site_names){
+  download_noaa_files_s3(siteID = S, 
+                         date = "2021-03-01", 
+                         cycle = "00", 
+                         local_directory <- paste0(basePath,"/drivers/"))
+}
+NOAA_Driver = noaa_gefs_read(paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr"), "2021-03-01", "00", "BART")
+
+predict_time = subset(NOAA_Driver, ensemble==1)
+predict_time = predict_time$time
+
+## Driver data conversion
+
+sw_driver = subset(NOAA_Driver, ensemble!=0)
+sw_driver = sw_driver$surface_downwelling_shortwave_flux_in_air
+sw_driver = matrix(sw_driver, nrow=30 ,byrow = TRUE)
+
+lw_driver = subset(NOAA_Driver, ensemble!=0)
+lw_driver = lw_driver$surface_downwelling_longwave_flux_in_air
+lw_driver = matrix(lw_driver, nrow=30 ,byrow = TRUE)
+
+sw_driver_gf = matrix(0, nrow=30, ncol = 1681)
+lw_driver_gf = matrix(0, nrow=30, ncol = 1681)
+
+## filling gap (average)
+for(i in 1:840){
+  sw_driver_gf[,2*i-1]=sw_driver[,i]
+  sw_driver_gf[,2*i]=(sw_driver[,i]+sw_driver[,i+1])/2
+  lw_driver_gf[,2*i-1]=lw_driver[,i]
+  lw_driver_gf[,2*i]=(lw_driver[,i]+lw_driver[,i+1])/2
+}
+sw_driver_gf[,1681]=sw_driver[,841]
+lw_driver_gf[,1681]=lw_driver[,841]
+
+```
+
+
+```{r}
+
+loadFilename <- sprintf("%s.Rdata","LE_BART_DLM_lw")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+## Forward Simulation
+### settings
+Nmc = 1000         ## set number of Monte Carlo draws
+N.cols <- c("black","red","green","blue","orange") ## set colors
+trans <- 0.8       ## set transparancy
+time = 1:length(time_BART)+1681    ## total time (1yr + 35 days)
+time1 = 1:length(time_BART)       ## calibration period
+time2 = (length(time_BART)+1):(length(time_BART)+1681)   ## forecast period
+timeN_predict = length(time2)
+tmp = matrix(0,1,length(time))
+ylim = c(-500,700)
+```
+
+```{r}
+plot.run <- function(){
+  plot(time,tmp,type='n',ylim=ylim,ylab="LE")
+  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time1,ci[2,],col="blue")
+  points(time1,le_BART)
+}
+```
+```{r,echo=FALSE}
+ci <- apply(as.matrix(predict),2,quantile,c(0.025,0.5,0.975))
+plot.run()
+```
+
+```{r}
+##` @param IC    Initial Conditions
+##` @param r     Intrinsic growth rate
+##` @param Kg    Across-site ('global') mean carrying capacity
+##` @param alpha Site random effect
+##` @param beta  Slope of precipitation effect on K
+##` @param ppt   Precipitation forecast
+##` @param Q     Process error (default = 0 for deterministic runs)
+##` @param n     Size of Monte Carlo ensemble
+forecastN <- function(IC,betaIntercept,betaX,betainlw,lw,Q=0,n=Nmc){
+  N <- matrix(NA,n,timeN_predict)  ## storage
+  Nprev <- IC           ## initialize
+  for(t in 1:timeN_predict){
+    mu = (1+betaX)*Nprev + betaIntercept + (betainlw*lw[,t])
+    N[,t] <- rnorm(n,mu,Q)                         ## predict next step
+    Nprev <- N[,t]                                  ## update IC
+  }
+  return(N)
+}
+```
+
+
+```{r}
+
+## calculate mean of all inputs
+sw.mean <- matrix(apply(sw_driver_gf,2,mean),1,timeN_predict) ## driver
+lw.mean <- matrix(apply(lw_driver_gf,2,mean),1,timeN_predict)
+## parameters
+params_mat <- as.matrix(params)
+param.mean <- apply(params_mat,2,mean)
+## initial conditions
+IC <- as.matrix(predict)
+
+##Deterministic prediction
+N.det <- forecastN(IC=mean(IC[,"x[17520]"]),
+                   betaIntercept=param.mean["betaIntercept"],
+                   betaX=param.mean["betaX"],
+                   betainlw=param.mean["betainlw"],
+                   lw=lw.mean,
+                   Q=0,  ## process error off
+                   n=1)
+
+## Plot run
+plot.run()
+lines(time2,N.det,col="purple",lwd=3)
+```
+
+
