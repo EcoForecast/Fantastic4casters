@@ -4,6 +4,17 @@ author: "Nia Bartolucci"
 date: "4/26/2021"
 output: html_document
 ---
+
+Potential issues with this iterative forecast:
+1. Initial conditions/model parameters sampled independently from the chain rather than jointly. I think it's better to sample them jointly (with replacement) because they could be correlated under the chain.
+2. Standard deviation for the particle filter (Chunk 9) is currently just 1. This should be obtained by the data as suggested by Kangjoon.
+3. Due to issues with the numbers, some questionable math is used. We just normalized the weights so they all lie between 10^-20, 10^20. Maybe one should resample instead.
+4. This is not really a problem with the forecast, but rather with the model. The model thinks the NEE is periodic with a similar amplitude year round, which makes it very inaccurate in the winter.
+
+
+
+
+
 ```{r}
 ## Package check and load
 
@@ -95,35 +106,40 @@ precip_driver_gf[,1681]=precip_driver[,841]
 
 ```{r}
 #SET ENSEMBLE RUNS
-ne = 30         #needs to stay 30 unless we also sample (with replacement) the noaa driver ensembles
+ne = 1000         #needs to stay 30 unless we also sample (with replacement) the noaa driver ensembles
 #yes, we will want way more than 30, so will have to sample with replacement
+
+re_sw_driver_gf=sw_driver_gf[sample(nrow(sw_driver_gf),size=ne,replace=TRUE),]
+re_lw_driver_gf=lw_driver_gf[sample(nrow(sw_driver_gf),size=ne,replace=TRUE),]
+re_temp_driver_gf=temp_driver_gf[sample(nrow(sw_driver_gf),size=ne,replace=TRUE),]
+re_precip_driver_gf=precip_driver_gf[sample(nrow(sw_driver_gf),size=ne,replace=TRUE),]
 
 #AVERAGE CHAINS
 
 #parsing MCMC output 
-beta_LE = sample(joint_out$params[[2]][,1], ne)
-beta_LEI = sample(joint_out$params[[2]][,2], ne)
-beta_LN = sample(joint_out$params[[2]][,3], ne)
-beta_LV = sample(joint_out$params[[2]][,4], ne)
-beta_NEE = sample(joint_out$params[[2]][,5], ne)
-beta_NEEI = sample(joint_out$params[[2]][,6], ne)
-beta_NL = sample(joint_out$params[[2]][,7], ne)
-beta_NV = sample(joint_out$params[[2]][,8], ne)
-beta_VL = sample(joint_out$params[[2]][,9], ne)
-beta_VN = sample(joint_out$params[[2]][,10], ne)
-beta_VSWC = sample(joint_out$params[[2]][,11], ne)
-beta_VSWCI = sample(joint_out$params[[2]][,12], ne)
-beta_lw = sample(joint_out$params[[2]][,13], ne)
-beta_precip = sample(joint_out$params[[2]][,14], ne)
-beta_sw1 = sample(joint_out$params[[2]][,15], ne)
-beta_sw2 = sample(joint_out$params[[2]][,16], ne)
-beta_temp = sample(joint_out$params[[2]][,17], ne)
-tau_le_add = sample(joint_out$params[[2]][,18], ne)
-tau_le_obs = sample(joint_out$params[[2]][,19], ne)
-tau_nee_add = sample(joint_out$params[[2]][,20], ne)
-tau_nee_obs = sample(joint_out$params[[2]][,21], ne)
-tau_vswc_add = sample(joint_out$params[[2]][,22], ne)
-tau_vswc_obs = sample(joint_out$params[[2]][,23], ne)
+beta_LE = sample(joint_out$params[[2]][,1], ne, replace=TRUE)
+beta_LEI = sample(joint_out$params[[2]][,2], ne, replace = TRUE)
+beta_LN = sample(joint_out$params[[2]][,3], ne, replace = TRUE)
+beta_LV = sample(joint_out$params[[2]][,4], ne, replace = TRUE)
+beta_NEE = sample(joint_out$params[[2]][,5], ne, replace = TRUE)
+beta_NEEI = sample(joint_out$params[[2]][,6], ne, replace = TRUE)
+beta_NL = sample(joint_out$params[[2]][,7], ne, replace = TRUE)
+beta_NV = sample(joint_out$params[[2]][,8], ne, replace = TRUE)
+beta_VL = sample(joint_out$params[[2]][,9], ne, replace = TRUE)
+beta_VN = sample(joint_out$params[[2]][,10], ne, replace = TRUE)
+beta_VSWC = sample(joint_out$params[[2]][,11], ne, replace = TRUE)
+beta_VSWCI = sample(joint_out$params[[2]][,12], ne, replace = TRUE)
+beta_lw = sample(joint_out$params[[2]][,13], ne, replace = TRUE)
+beta_precip = sample(joint_out$params[[2]][,14], ne, replace = TRUE)
+beta_sw1 = sample(joint_out$params[[2]][,15], ne, replace = TRUE)
+beta_sw2 = sample(joint_out$params[[2]][,16], ne, replace = TRUE)
+beta_temp = sample(joint_out$params[[2]][,17], ne, replace = TRUE)
+tau_le_add = sample(joint_out$params[[2]][,18], ne, replace = TRUE)
+tau_le_obs = sample(joint_out$params[[2]][,19], ne, replace = TRUE)
+tau_nee_add = sample(joint_out$params[[2]][,20], ne, replace = TRUE)
+tau_nee_obs = sample(joint_out$params[[2]][,21], ne, replace = TRUE)
+tau_vswc_add = sample(joint_out$params[[2]][,22], ne, replace = TRUE)
+tau_vswc_obs = sample(joint_out$params[[2]][,23], ne, replace = TRUE)
 #why sample from chain 2? 
 
 #I feel that sampling from each of these independently is not correct, rather we should sample 30 random
@@ -150,9 +166,9 @@ tau_vswc_obs = sample(joint_out$params[[2]][,23], ne)
 #also arbitrarily sample form the second chain; could improve by sampling from all three.
 #17520, 35040, 52560 are the last predictions for LE, NEE, VSWC repectively.
 
-IC_LE = sample(joint_out$predict[[2]][,17520], ne)
-IC_NEE = sample(joint_out$predict[[2]][,35040], ne)
-IC_VSWC = sample(joint_out$predict[[2]][,52560], ne)
+IC_LE = sample(joint_out$predict[[2]][,17520], ne, replace = TRUE)
+IC_NEE = sample(joint_out$predict[[2]][,35040], ne, replace = TRUE)
+IC_VSWC = sample(joint_out$predict[[2]][,52560], ne, replace = TRUE)
 
 
 
@@ -192,7 +208,7 @@ for(t in 1:nt){
                      beta_NEE,beta_LE,beta_VSWC,beta_NL,beta_NV,beta_LV,beta_LN,
                      beta_VN,beta_VL,beta_NEEI,beta_LEI,beta_VSWCI,
                      beta_sw1,beta_sw2,beta_lw,beta_temp,beta_precip,
-                     sw_driver_gf[,t],lw_driver_gf[,t],temp_driver_gf[,t],precip_driver_gf[,t])  
+                     re_sw_driver_gf[,t],re_lw_driver_gf[,t],re_temp_driver_gf[,t],re_precip_driver_gf[,t])  
   #reset initial conditions
   IC_NEE = output[,t ,1]
   IC_LE = output[,t ,2]
@@ -240,14 +256,95 @@ for(i in 1:ne){
   #print(length(NEEcast[i, sel]))
   #print(length(NEEnew))
   NEElike[i, sel] = dnorm(NEEcast[i, sel], NEEnew, 1, log = TRUE)  ## calculate log likelihoods 
-  #for now just using standard dev 1 from lack of standard dev data
+  
+  #for now just using standard dev 1 from lack of standard dev data!! Need to fix this.
   
   NEElike[i, is.na(NEElike[i, ])] = 0       ## missing data as weight 1; log(1)=0
-  print(length(exp(cumsum(NEEcalc[i, ]))))
-  NEElike[i, ] = exp(cumsum(NEElike[i, ]))  ## convert to cumulative log likelihood and take out of log-space
-  
+  #print(NEElike)
+  #NEElike[i, ] = exp(cumsum(NEElike[i, ]))  ## convert to cumulative log likelihood and take out of log-space
+  NEElike[i, ] = cumsum(NEElike[i, ])
+  #set each column to have sum zero.
+  #print(NEElike[i,1:500])
   #problem: there are way too many timepoints, so the exponentials of cumulative sums of likelihoods will be incredibly tiny. Need a more reasonable re-weighting method to make the quantiles for the particle filter. 
 }
+#set each column to have sum zero
+NEEsum = colSums(NEElike)
+NEEshift = array(1,dim(NEElike))
+NEEshift = NEEshift%*%diag(NEEsum)
+NEEshift = NEEshift/ne
+NEElike = NEElike - NEEshift
+
+
+#make sure the max and min are not too large
+
+#NEEmax = apply(NEElike,2,max)
+NEEmax = max(NEElike)
+NEElike = 30*NEElike/NEEmax
+
+
+#take out of log space
+NEElike = exp(NEElike)
+
 hist(NEElike[,ncol(NEElike)],main="Final Ensemble Weights", xlab = "NEElike for the ensemble")
 #not showing anything because it is all zero.
+``` 
+Plotting the non-resampling particle filter
+
+```{r}
+## Non-resampling Particle Filter
+## calculation of CI
+#nobs = ncol(LAIlike)                     ## number of observations
+NEEpf = matrix(NA, 3, nt)              ## storage [intervals,time]
+wbar = apply(NEElike, 2, mean)           ## mean weight at each time point
+for(i in 1:nt){
+  ## calculate weighted median and CI
+  vec1 = NEEcast[,i]
+  wt = NEElike[, i] / wbar[i]
+  NEEpf[, i] = wtd.quantile(NEEcast[, i], NEElike[, i] / wbar[i], c(0.025, 0.5, 0.975))  
+}
+
+## plot original ensemble and PF with data
+col.pf   = c(col.alpha("lightGrey", 0.5), col.alpha("lightBlue", 0.5), 
+             col.alpha("lightGreen", 0.5))                      ## color sequence
+names.pf = c("ensemble", "non-resamp PF", "resamp PF")          ## legend names
+
+ci = apply(output[, , 1], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
+plot(ci[2, ], main = varnames[1], xlab = "time", ylab = units[1], type='l',ylim  =range(ci))
+ciEnvelope(1:ncol(ci), ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+lines(ci[2, ])
+
+
+ciEnvelope(1:ncol(ci), NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(NEEpf[2, ],col="green")
+
+lines(NEEnew,col="red")
+#points(Mtime, LAIr)                                                   ## observations
+#for(i in 1:length(LAIr)){                                             ## observation uncertainty
+#  if(!is.na(QC[i])){
+#    lines(rep(Mtime[i], 2), LAIr[i]+c(-1, 1) * LAIr.sd[i])            ## data is +/- 1 SD; NOT 95%
+#  }
+#}
+legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
+```
+Can do this for the other variables.
+
+
+Trying to plot the old stuff to compare
+```{r}
+#17520,35040
+t1 = 3000
+t2 = 10000
+NEEpred = joint_out$predict[[2]][,(17521 + t1):(17521+ t2)]
+
+ciNEE = apply(NEEpred, 2, quantile, c(0.025, 0.5, 0.975))
+plot(ciNEE[2, ], xlab = "time", ylab = "NEE", type='l',ylim  =range(ciNEE))
+ciEnvelope(1:ncol(ciNEE), ciNEE[1, ], ciNEE[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+lines(ciNEE[2, ])
+lines(NEE_KONZ[t1:t2],col="red")
+
+```
+
+```{r}
+length(NEE_KONZ[t1:t2])
+
 ```
