@@ -58,13 +58,13 @@ precip_driver = matrix(precip_driver, nrow=30 ,byrow = TRUE)
 precip_driver = 1800 * precip_driver # unit conversion (30 min -> 1800 sec)
 
 #storage to make 30 min interval driver data
-sw_driver_gf = matrix(0, nrow=30, ncol=1681)
-lw_driver_gf = matrix(0, nrow=30, ncol=1681)
-temp_driver_gf = matrix(0, nrow=30, ncol=1681)
-precip_driver_gf = matrix(0, nrow=30, ncol=1681)
+sw_driver_gf = matrix(0, nrow=30, ncol=1679)
+lw_driver_gf = matrix(0, nrow=30, ncol=1679)
+temp_driver_gf = matrix(0, nrow=30, ncol=1679)
+precip_driver_gf = matrix(0, nrow=30, ncol=1679)
 
 ## filling gap (interpolation using average)
-for(i in 1:840){
+for(i in 1:839){
   sw_driver_gf[,2*i-1]=sw_driver[,i]
   sw_driver_gf[,2*i]=(sw_driver[,i]+sw_driver[,i+1])/2
   lw_driver_gf[,2*i-1]=lw_driver[,i]
@@ -74,10 +74,10 @@ for(i in 1:840){
   precip_driver_gf[,2*i-1]=precip_driver[,i]
   precip_driver_gf[,2*i]=(precip_driver[,i]+precip_driver[,i+1])/2
 }
-sw_driver_gf[,1681]=sw_driver[,841]
-lw_driver_gf[,1681]=lw_driver[,841]
-temp_driver_gf[,1681]=temp_driver[,841]
-precip_driver_gf[,1681]=precip_driver[,841]
+sw_driver_gf[,1679]=sw_driver[,840]
+lw_driver_gf[,1679]=lw_driver[,840]
+temp_driver_gf[,1679]=temp_driver[,840]
+precip_driver_gf[,1679]=precip_driver[,840]
 
 ```
 
@@ -109,9 +109,9 @@ load(file = loadFilename)
 Nmc = 1000         ## set number of Monte Carlo draws
 N.cols <- c("red","green","blue") ## set colors
 trans <- 0.8       ## set transparancy
-time = 1:length(time_KONZ)+1681    ## total time (1yr + 35 days)
+time = 1:length(time_KONZ)+1679    ## total time (1yr + 35 days)
 time1 = 1:length(time_KONZ)       ## calibration period
-time2 = (length(time_KONZ)+1):(length(time_KONZ)+1681)   ## forecast period
+time2 = (length(time_KONZ)+1):(length(time_KONZ)+1679)   ## forecast period
 timeN_predict = length(time2)
 tmp = matrix(0,1,length(time))
 #ylim = c(-500,700)
@@ -137,10 +137,11 @@ forecastN <- function(IC_NEE,IC_LE,IC_VSWC,beta_NEE,beta_LE,beta_VSWC,beta_NL,be
   Nprev_LE <- IC_LE
   Nprev_VSWC <- IC_VSWC
   
+  
   for(t in 1:timeN_predict){
-    mu_nee = (1+beta_NEE)*Nprev_NEE+beta_NEEI+beta_NL*Nprev_LE+beta_NV*Nprev_VSWC+beta_sw1*sw +beta_temp*temp
-    mu_le = (1+beta_LE)*Nprev_LE+beta_LEI+beta_LN*Nprev_NEE+beta_LV*Nprev_VSWC+beta_sw2*sw +beta_lw*lw
-    mu_vswc = (1+beta_VSWC)*Nprev_VSWC+beta_VSWCI+beta_VN*Nprev_NEE+beta_VL*Nprev_LE+beta_precip*precip
+    mu_nee = (1+beta_NEE)*Nprev_NEE+beta_NEEI+beta_NL*Nprev_LE+beta_NV*Nprev_VSWC+beta_sw1*sw[,t] +beta_temp*temp[,t]
+    mu_le = (1+beta_LE)*Nprev_LE+beta_LEI+beta_LN*Nprev_NEE+beta_LV*Nprev_VSWC+beta_sw2*sw[,t] +beta_lw*lw[,t]
+    mu_vswc = (1+beta_VSWC)*Nprev_VSWC+beta_VSWCI+beta_VN*Nprev_NEE+beta_VL*Nprev_LE+beta_precip*precip[,t]
     
     NEE[,t] <- rnorm(n,mu_nee,Q)                         ## predict next step
     LE[,t] <- rnorm(n,mu_le,Q)
