@@ -8,6 +8,8 @@ library(daymetr)
 library(ecoforecastR)
 library(neonUtilities)
 library(raster)
+library(dplyr)
+library(iotools)
 
 #source("/Users/niabartolucci/Dropbox/My Mac (Nia’s MacBook Pro)/Desktop/Classes Spring 2021/Ecological Forecasting/EF_Activities/ecoforecastR/R/utils.R")
 
