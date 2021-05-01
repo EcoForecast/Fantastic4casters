@@ -255,7 +255,7 @@ out <- as.matrix(joint_out$predict)
 
 ```{r}
 plot.run_NEE <- function(){
-  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Forecast", 
        xlab = "time")
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -265,7 +265,7 @@ plot.run_NEE <- function(){
 
 ```{r}
 plot.run_NEE2 <- function(){
-  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Forecast", 
        xlab = "time",xlim=c(17000,19500))
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -275,7 +275,7 @@ plot.run_NEE2 <- function(){
 
 ```{r}
 plot.run_LE <- function(){
-  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Forecast", 
        xlab = "time")
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -285,7 +285,7 @@ plot.run_LE <- function(){
 
 ```{r}
 plot.run_LE2 <- function(){
-  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Forecast", 
        xlab = "time", xlim=c(17000,19500))
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -295,7 +295,7 @@ plot.run_LE2 <- function(){
 
 ```{r}
 plot.run_VSWC <- function(){
-  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Forecast", 
        xlab = "time")
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -305,7 +305,7 @@ plot.run_VSWC <- function(){
 
 ```{r}
 plot.run_VSWC2 <- function(){
-  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Ensemble Forecast", 
+  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Forecast", 
        xlab = "time", xlim=c(17000,19500))
   ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
   lines(time1,ci[2,],col="blue")
@@ -516,7 +516,7 @@ lines(ci[2, ])
 ciEnvelope(time2,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,NEEpf[2, ],col="green")
 
-lines((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
+points((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -536,7 +536,7 @@ ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot in
 lines(ci[2, ])
 ciEnvelope(time2,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,NEEpf[2, ],col="green")
-lines((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
+points((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
@@ -558,7 +558,7 @@ lines(ci[2, ])
 ciEnvelope(time2,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,LEpf[2, ],col="green")
 
-lines((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
+points((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -581,7 +581,7 @@ ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot in
 lines(ci[2, ])
 ciEnvelope(time2,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,LEpf[2, ],col="green")
-lines((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
+points((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
@@ -603,7 +603,7 @@ lines(ci[2, ])
 ciEnvelope(time2,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,VSWCpf[2, ],col="green")
 
-lines((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
+points((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -627,31 +627,31 @@ ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot in
 lines(ci[2, ])
 ciEnvelope(time2,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
 lines(time2,VSWCpf[2, ],col="green")
-lines((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
+points((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
 
 
-Can do this for the other variables.
+#Can do this for the other variables.
 
 
-Trying to plot the old stuff to compare
+#Trying to plot the old stuff to compare
 ```{r}
-#17520,35040
-t1 = 3000
-t2 = 10000
-NEEpred = joint_out$predict[[2]][,(17521 + t1):(17521+ t2)]
+##17520,35040
+#t1 = 3000
+#t2 = 10000
+#NEEpred = joint_out$predict[[2]][,(17521 + t1):(17521+ t2)]
 
-ciNEE = apply(NEEpred, 2, quantile, c(0.025, 0.5, 0.975))
-plot(ciNEE[2, ], xlab = "time", ylab = "NEE", type='l',ylim  =range(ciNEE))
-ciEnvelope(1:ncol(ciNEE), ciNEE[1, ], ciNEE[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
-lines(ciNEE[2, ])
-lines(NEE_KONZ[t1:t2],col="red")
+#ciNEE = apply(NEEpred, 2, quantile, c(0.025, 0.5, 0.975))
+#plot(ciNEE[2, ], xlab = "time", ylab = "NEE", type='l',ylim  =range(ciNEE))
+#ciEnvelope(1:ncol(ciNEE), ciNEE[1, ], ciNEE[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+#lines(ciNEE[2, ])
+#lines(NEE_KONZ[t1:t2],col="red")
 
 ```
 
 ```{r}
-length(NEE_KONZ[t1:t2])
+#length(NEE_KONZ[t1:t2])
 
 ```
