@@ -1,0 +1,171 @@
+---
+title: "04_updatedata(tmp)"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "4/27/2021"
+output: html_document
+---
+
+```{r}
+## library and directory setting
+
+source("00C_Library+Directory_Setting.R")
+```
+
+```{r}
+# If you need to download data, run this source Rscript
+###source('01A_Targetdownload.R')
+##source('01C_COVdownload.R')
+
+# load the data file [30 min Target data]
+loadFilename <- sprintf("%s.Rdata","Target_30min")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Radiance")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Air_Temperature")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+loadFilename <- sprintf("%s.Rdata","Precipitation")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+```
+
+```{r}
+##subset time (initial period 2020 March to 2021 February)
+Target_30min_BART_up = subset(Target_30min, siteID == 'BART' & time >= as.POSIXct('2021-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+Target_30min_KONZ_up = subset(Target_30min, siteID == 'KONZ' & time >= as.POSIXct('2021-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+Target_30min_OSBS_up = subset(Target_30min, siteID == 'OSBS' & time >= as.POSIXct('2021-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+Target_30min_SRER_up = subset(Target_30min, siteID == 'SRER' & time >= as.POSIXct('2021-03-01 00:00', tz="UTC") & 
+                                                                time < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+##subset site and time
+time_BART_up = Target_30min_BART_up$time
+time_KONZ_up = Target_30min_KONZ_up$time
+time_OSBS_up = Target_30min_OSBS_up$time
+time_SRER_up = Target_30min_SRER_up$time
+
+LE_BART_up = Target_30min_BART_up$le
+LE_KONZ_up = Target_30min_KONZ_up$le
+LE_OSBS_up = Target_30min_OSBS_up$le
+LE_SRER_up = Target_30min_SRER_up$le
+
+NEE_BART_up = Target_30min_BART_up$nee
+NEE_KONZ_up =Target_30min_KONZ_up$nee
+NEE_OSBS_up =Target_30min_OSBS_up$nee
+NEE_SRER_up =Target_30min_SRER_up$nee
+
+VSWC_BART_up = Target_30min_BART_up$vswc
+VSWC_KONZ_up =Target_30min_KONZ_up$vswc
+VSWC_OSBS_up =Target_30min_OSBS_up$vswc
+VSWC_SRER_up =Target_30min_SRER_up$vswc
+
+#subset covariate data of KONZ site
+swlw_KONZ_up = subset(swlw_data, siteID == 'KONZ' & verticalPosition == '040' & 
+                     startDateTime >= as.POSIXct('2021-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+
+precip_KONZ_up = subset(precip_data, siteID == 'KONZ' & 
+                     startDateTime >= as.POSIXct('2021-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+
+temp_KONZ_up = subset(temp_data, siteID == 'KONZ' & verticalPosition == '010' & 
+                     startDateTime >= as.POSIXct('2021-03-01 00:00', tz="UTC") &
+                     startDateTime < as.POSIXct('2021-04-01 00:00', tz="UTC"))
+
+#make data frame with target and covariate data
+data_up = data.frame(time = time_KONZ_up, LE_obs = LE_KONZ_up, NEE_obs = NEE_KONZ_up, VSWC_obs = VSWC_KONZ_up)
+data_up$insw = swlw_KONZ_up$inSWMean[match(data_up$time,swlw_KONZ_up$startDateTime)]
+data_up$inlw = swlw_KONZ_up$inLWMean[match(data_up$time,swlw_KONZ_up$startDateTime)]
+data_up$temp = temp_KONZ_up$tempSingleMean[match(data_up$time,temp_KONZ_up$startDateTime)]
+data_up$precip = precip_KONZ_up$priPrecipBulk[match(data_up$time,precip_KONZ_up$startDateTime)]
+
+newFilename <- sprintf("%s.Rdata","Dataframe_updated")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(data_up,file=newFilename)
+```
+
+
+```{r}
+#NOAA data load
+# Download NOAA climate forecasts (hourly) and downsample to daily scale
+source("00B_NOAAconversion.R")
+
+# define site names
+site_names <- c("BART","KONZ","OSBS","SRER")
+
+####If you don't have NOAA data, run this code
+#for (S in site_names){
+#  download_noaa_files_s3(siteID = S, 
+#                         date = "2021-04-01", 
+#                         cycle = "00", 
+#                         local_directory <- paste0(basePath,"/drivers/"))
+#}
+
+NOAA_Driver = noaa_gefs_read(paste0(basePath,"/drivers/noaa/NOAAGEFS_1hr"), "2021-04-01", "00", "KONZ")
+
+predict_time = subset(NOAA_Driver, ensemble==1)
+predict_time = predict_time$time
+
+## Driver data preparation
+
+#shortwave radiance
+sw_driver = subset(NOAA_Driver, ensemble!=0)
+sw_driver = sw_driver$surface_downwelling_shortwave_flux_in_air
+sw_driver = matrix(sw_driver, nrow=30 ,byrow = TRUE)
+
+#longwave radiance
+lw_driver = subset(NOAA_Driver, ensemble!=0)
+lw_driver = lw_driver$surface_downwelling_longwave_flux_in_air
+lw_driver = matrix(lw_driver, nrow=30 ,byrow = TRUE)
+
+#air temperature
+temp_driver = subset(NOAA_Driver, ensemble!=0)
+temp_driver = temp_driver$air_temperature
+temp_driver = matrix(temp_driver, nrow=30 ,byrow = TRUE)
+tmp = matrix(273.15,30,841)
+temp_driver = temp_driver - tmp  # conversion kelvin degree to celcius degree (-273.15)
+
+#precipitation flux
+precip_driver = subset(NOAA_Driver, ensemble!=0)
+precip_driver = precip_driver$precipitation_flux
+precip_driver = matrix(precip_driver, nrow=30 ,byrow = TRUE)
+precip_driver = 1800 * precip_driver # unit conversion (30 min -> 1800 sec)
+
+#storage to make 30 min interval driver data
+sw_driver_gf = matrix(0, nrow=30, ncol=1681)
+lw_driver_gf = matrix(0, nrow=30, ncol=1681)
+temp_driver_gf = matrix(0, nrow=30, ncol=1681)
+precip_driver_gf = matrix(0, nrow=30, ncol=1681)
+
+## filling gap (interpolation using average)
+for(i in 1:840){
+  sw_driver_gf[,2*i-1]=sw_driver[,i]
+  sw_driver_gf[,2*i]=(sw_driver[,i]+sw_driver[,i+1])/2
+  lw_driver_gf[,2*i-1]=lw_driver[,i]
+  lw_driver_gf[,2*i]=(lw_driver[,i]+lw_driver[,i+1])/2
+  temp_driver_gf[,2*i-1]=temp_driver[,i]
+  temp_driver_gf[,2*i]=(temp_driver[,i]+temp_driver[,i+1])/2
+  precip_driver_gf[,2*i-1]=precip_driver[,i]
+  precip_driver_gf[,2*i]=(precip_driver[,i]+precip_driver[,i+1])/2
+}
+sw_driver_gf[,1681]=sw_driver[,841]
+lw_driver_gf[,1681]=lw_driver[,841]
+temp_driver_gf[,1681]=temp_driver[,841]
+precip_driver_gf[,1681]=precip_driver[,841]
+
+newFilename <- sprintf("%s.Rdata","Driver_updated")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(sw_driver_gf,lw_driver_gf,temp_driver_gf,precip_driver_gf,file=newFilename)
+
+```
