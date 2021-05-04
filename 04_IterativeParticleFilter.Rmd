@@ -243,73 +243,79 @@ for(t in 1:nt){
 ### settings
 N.cols <- c("red","green","blue") ## set colors
 trans <- 0.8       ## set transparancy
-time = 1:length(time_KONZ)+1679    ## total time (1yr + 35 days)
+time = 1:(length(time_KONZ)+1679)    ## total time (1yr + 35 days)
 time1 = 1:length(time_KONZ)       ## calibration period
 time2 = (length(time_KONZ)+1):(length(time_KONZ)+1679)   ## forecast period
 timeN_predict = length(time2)
 tmp = matrix(0,1,length(time))
 out <- as.matrix(joint_out$predict)
+
+time_plot = time_KONZ
+for (i in 1:1679){
+  time_plot[17520+i]<-time_plot[17519+i]+1800
+} 
+time_predict = time_plot[17521:19199]
 #ylim = c(-500,700)
 ```
 
 
 ```{r}
 plot.run_NEE <- function(){
-  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Forecast", 
+  plot(time_plot,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Ensemble Forecast", 
        xlab = "time")
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,NEE_BART)
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,NEE_BART)
 }
 ```
 
 ```{r}
 plot.run_NEE2 <- function(){
-  plot(time,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Forecast", 
-       xlab = "time",xlim=c(17000,19500))
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,NEE_BART)
+  plot(time_plot,tmp,type='n',ylim=range(NEE_KONZ,na.rm=TRUE),ylab="NEE",main = "NEE Ensemble Forecast", 
+       xlab = "time", xlim=c(as.POSIXct("2021-03-10",tz="UTC"),as.POSIXct("2021-03-20",tz="UTC")))
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,NEE_BART)
 }
 ```
 
 ```{r}
 plot.run_LE <- function(){
-  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Forecast", 
+  plot(time_plot,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Ensemble Forecast", 
        xlab = "time")
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,NEE_BART)
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,NEE_BART)
 }
 ```
 
 ```{r}
 plot.run_LE2 <- function(){
-  plot(time,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Forecast", 
-       xlab = "time", xlim=c(17000,19500))
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,NEE_BART)
+  plot(time_plot,tmp,type='n',ylim=range(LE_KONZ,na.rm=TRUE),ylab="LE",main = "LE Ensemble Forecast", 
+       xlab = "time", xlim=c(as.POSIXct("2021-03-10",tz="UTC"),as.POSIXct("2021-03-20",tz="UTC")))
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,NEE_BART)
 }
 ```
 
 ```{r}
 plot.run_VSWC <- function(){
-  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Forecast", 
+  plot(time_plot,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Ensemble Forecast", 
        xlab = "time")
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,VSWC_BART)
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,VSWC_BART)
 }
 ```
 
 ```{r}
 plot.run_VSWC2 <- function(){
-  plot(time,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Forecast", 
-       xlab = "time", xlim=c(17000,19500))
-  ecoforecastR::ciEnvelope(time1,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
-  lines(time1,ci[2,],col="blue")
-  points(time1,VSWC_BART)
+  plot(time_plot,tmp,type='n',ylim=range(ci,na.rm=TRUE),ylab="VSWC",main = "VSWC Ensemble Forecast", 
+       xlab = "time", xlim=c(as.POSIXct("2021-03-10",tz="UTC"),as.POSIXct("2021-03-20",tz="UTC")))
+  ecoforecastR::ciEnvelope(time_KONZ,ci[1,],ci[3,],col=col.alpha("lightBlue",0.6))
+  lines(time_KONZ,ci[2,],col="blue")
+  points(time_KONZ,VSWC_BART)
 }
 ```
 
@@ -320,8 +326,8 @@ x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the let
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_NEE()
 ci = apply(output[, , 1], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[1], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[1], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
 ### Plot for NEE (subset)
@@ -331,8 +337,8 @@ x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the let
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_NEE2()
 ci = apply(output[, , 1], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[1], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[1], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
 ### Plot for NEE
@@ -342,8 +348,8 @@ x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the lett
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_LE()
 ci = apply(output[, , 2], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[2], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[2], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
 ### Plot for LE (subset)
@@ -353,8 +359,8 @@ x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the lett
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_LE2()
 ci = apply(output[, , 2], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[2], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[2], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
 ### Plot for VSWC
@@ -364,19 +370,19 @@ x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the le
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_VSWC()
 ci = apply(output[, , 3], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[3], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[3], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
-### Plot for NEE (subset)
+### Plot for VSWC (subset)
 
 ```{r,echo=FALSE}
 x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_VSWC2()
 ci = apply(output[, , 3], 2, quantile, c(0.025, 0.5, 0.975),na.rm=TRUE)   ## calculate CI over ensemble members
-ciEnvelope(time2, ci[1, ], ci[3, ], col = col.alpha(N.cols[3], 0.5)) ## plot interval
-lines(time2,ci[2,],lwd=0.5)
+ciEnvelope(time_predict, ci[1, ], ci[3, ], col = col.alpha(N.cols[3], 0.5)) ## plot interval
+lines(time_predict,ci[2,],lwd=0.5)
 ```
 
 
@@ -509,14 +515,14 @@ x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the let
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_NEE()
 ci = apply(output[, , 1], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
 
 
-ciEnvelope(time2,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,NEEpf[2, ],col="green")
+ciEnvelope(time_predict,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,NEEpf[2, ],col="green")
 
-points((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
+points(data_up$time,NEEnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -526,17 +532,19 @@ points((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
+
+
 ### Plot for NEE (subset)
 ```{r}
 x.cols <- grep("^NEE",colnames(out)) ## grab all columns that start with the letter x
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_NEE2()
 ci = apply(output[, , 1], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
-ciEnvelope(time2,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,NEEpf[2, ],col="green")
-points((length(time)+1):(length(time)+length(NEEnew)),NEEnew,col="red")
+ciEnvelope(time_predict,NEEpf[1, ], NEEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,NEEpf[2, ],col="green")
+points(data_up$time,NEEnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
@@ -551,14 +559,14 @@ x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the lett
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_LE()
 ci = apply(output[, , 2], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
 
 
-ciEnvelope(time2,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,LEpf[2, ],col="green")
+ciEnvelope(time_predict,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,LEpf[2, ],col="green")
 
-points((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
+points(data_up$time,LEnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -577,11 +585,11 @@ x.cols <- grep("^LE",colnames(out)) ## grab all columns that start with the lett
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_LE2()
 ci = apply(output[, , 2], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
-ciEnvelope(time2,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,LEpf[2, ],col="green")
-points((length(time)+1):(length(time)+length(LEnew)),LEnew,col="red")
+ciEnvelope(time_predict,LEpf[1, ], LEpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,LEpf[2, ],col="green")
+points(data_up$time,LEnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
@@ -596,14 +604,14 @@ x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the le
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_VSWC()
 ci = apply(output[, , 3], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
 
 
-ciEnvelope(time2,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,VSWCpf[2, ],col="green")
+ciEnvelope(time_predict,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,VSWCpf[2, ],col="green")
 
-points((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
+points(data_up$time,VSWCnew,col="red")
 #points(Mtime, LAIr)                                                   ## observations
 #for(i in 1:length(LAIr)){                                             ## observation uncertainty
 #  if(!is.na(QC[i])){
@@ -623,35 +631,24 @@ x.cols <- grep("^VSWC",colnames(out)) ## grab all columns that start with the le
 ci <- apply(out[,x.cols],2,quantile,c(0.025,0.5,0.975)) 
 plot.run_VSWC2()
 ci = apply(output[, , 3], 2, quantile, c(0.025, 0.5, 0.975))   ## calculate CI over ensemble members
-ciEnvelope(time2,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
+ciEnvelope(time_predict,ci[1, ], ci[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
 lines(ci[2, ])
-ciEnvelope(time2,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
-lines(time2,VSWCpf[2, ],col="green")
-points((length(time)+1):(length(time)+length(VSWCnew)),VSWCnew,col="red")
+ciEnvelope(time_predict,VSWCpf[1, ], VSWCpf[3, ], col = col.pf[2])      ## non-resampling Particle Filter
+lines(time_predict,VSWCpf[2, ],col="green")
+points(data_up$time,VSWCnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
-
-
-#Can do this for the other variables.
-
-
-#Trying to plot the old stuff to compare
 ```{r}
-##17520,35040
-#t1 = 3000
-#t2 = 10000
-#NEEpred = joint_out$predict[[2]][,(17521 + t1):(17521+ t2)]
+## save data
 
-#ciNEE = apply(NEEpred, 2, quantile, c(0.025, 0.5, 0.975))
-#plot(ciNEE[2, ], xlab = "time", ylab = "NEE", type='l',ylim  =range(ciNEE))
-#ciEnvelope(1:ncol(ciNEE), ciNEE[1, ], ciNEE[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
-#lines(ciNEE[2, ])
-#lines(NEE_KONZ[t1:t2],col="red")
+Fantastic4casters <- data.frame(time = time_predict, statistic = matrix("mean",1679,1), siteID = matrix("KONZ",1679,1), 
+                                forecast = matrix(1,1679,1), data_assimilation=matrix(0,1679,1), nee=NEEpf[2,], le=LEpf[2,],
+                                vswc=VSWCpf[2,])
+
+newFilename <- sprintf("%s.Rdata","Prediction")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(Fantastic4casters,file=newFilename)
 
 ```
 
-```{r}
-#length(NEE_KONZ[t1:t2])
-
-```
