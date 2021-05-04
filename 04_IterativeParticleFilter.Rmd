@@ -639,27 +639,16 @@ points(data_up$time,VSWCnew,col="red")
 legend("topleft", legend = names.pf[1:2], col = col.pf[1:2], lwd = 5)
 ```
 
-
-
-#Can do this for the other variables.
-
-
-#Trying to plot the old stuff to compare
 ```{r}
-##17520,35040
-#t1 = 3000
-#t2 = 10000
-#NEEpred = joint_out$predict[[2]][,(17521 + t1):(17521+ t2)]
+## save data
 
-#ciNEE = apply(NEEpred, 2, quantile, c(0.025, 0.5, 0.975))
-#plot(ciNEE[2, ], xlab = "time", ylab = "NEE", type='l',ylim  =range(ciNEE))
-#ciEnvelope(1:ncol(ciNEE), ciNEE[1, ], ciNEE[3, ], col = col.alpha("lightGrey", 0.5)) ## plot interval
-#lines(ciNEE[2, ])
-#lines(NEE_KONZ[t1:t2],col="red")
+Fantastic4casters <- data.frame(time = time_predict, statistic = matrix("mean",1679,1), siteID = matrix("KONZ",1679,1), 
+                                forecast = matrix(1,1679,1), data_assimilation=matrix(0,1679,1), nee=NEEpf[2,], le=LEpf[2,],
+                                vswc=VSWCpf[2,])
+
+newFilename <- sprintf("%s.Rdata","Prediction")
+newFilename <- paste(dataPath, newFilename, sep="", collapse = NULL)
+save(Fantastic4casters,file=newFilename)
 
 ```
 
-```{r}
-#length(NEE_KONZ[t1:t2])
-
-```

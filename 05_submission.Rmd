@@ -1,0 +1,29 @@
+---
+title: "05_submission"
+author: "Nia Bartolucci; Cameron Reimer; Kangjoon Cho; Zhenpeng Zuo"
+date: "5/3/2021"
+output: html_document
+---
+
+```{r}
+source("00C_Library+Directory_Setting.R")
+
+loadFilename <- sprintf("%s.Rdata","Prediction")
+loadFilename <- paste(dataPath, loadFilename, sep="", collapse = NULL)
+load(file = loadFilename)
+
+write.csv(Fantastic4casters,"terrestrial_30min-2021-04-01_Fantastic4casters.csv")
+
+remotes::install_github("eco4cast/neon4cast")
+library(neon4cast)
+
+neon4cast::create_model_metadata("terrestrial_30min-2021-04-01_Fantastic4casters.csv")
+
+
+library(aws.s3)
+
+Sys.setenv("AWS_DEFAULT_REGION" = "data",
+           "AWS_S3_ENDPOINT" = "ecoforecast.org")
+
+aws.s3::put_object(object = "terrestrial_30min-2021-04-01_Fantastic4casters.csv", bucket = "submissions")
+```
